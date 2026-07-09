@@ -16,9 +16,10 @@ export const AuthProvider = ({ children }) => {
         try {
           setUser(JSON.parse(savedUser));
           setLoading(false);
+
           // If it's a mock token, skip backend verification
           if (token === 'mock_demo_token' || token === 'mock-google-token') {
-             return; 
+            return;
           }
 
           // Fetch fresh user data from SQLite backend to verify session
@@ -27,12 +28,20 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('pp_user', JSON.stringify(freshUser));
           setUser(freshUser);
         } catch (err) {
-          console.error('Session verification failed, logging out:', err);
-          logout();
+          // Only force logout on actual auth errors (401/403)
+          // Network errors (server sleeping/timeout) should keep user logged in
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            console.error('Session expired, logging out:', err);
+            logout();
+          } else {
+            console.warn('Could not verify session (server may be sleeping), keeping user logged in:', err?.message);
+          }
         }
       } else {
         setLoading(false);
       }
+
     };
 
     initializeAuth();
