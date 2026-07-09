@@ -16,6 +16,10 @@ export const AuthProvider = ({ children }) => {
         try {
           setUser(JSON.parse(savedUser));
           setLoading(false);
+          // If it's a mock token, skip backend verification
+          if (token === 'mock_demo_token' || token === 'mock-google-token') {
+             return; 
+          }
 
           // Fetch fresh user data from SQLite backend to verify session
           const res = await authAPI.getMe();
