@@ -14,6 +14,10 @@ import CreateQuizPage from './pages/faculty/CreateQuizPage';
 import FacultyAnalyticsPage from './pages/faculty/FacultyAnalyticsPage';
 import FacultyStudentsPage from './pages/faculty/FacultyStudentsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUserManagement from './pages/admin/AdminUserManagement';
+import AdminContentManagement from './pages/admin/AdminContentManagement';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminSettings from './pages/admin/AdminSettings';
 import ProtectedLayout from './components/layout/ProtectedLayout';
 import { useAuth } from './context/AuthContext';
 
@@ -46,6 +50,10 @@ function App() {
         
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/users" element={<AdminUserManagement />} />
+        <Route path="/admin/content" element={<AdminContentManagement />} />
+        <Route path="/admin/analytics" element={<AdminAnalytics />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
 
         {/* Fallback for undefined roles/pages */}
         <Route path="*" element={<Navigate to="/" replace />} />

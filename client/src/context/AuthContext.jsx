@@ -1,12 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { auth, googleProvider } from '../firebase/config';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -16,80 +8,74 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen to Firebase Auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('pp_token');
+      const savedUser = localStorage.getItem('pp_user');
+      
+      if (token && savedUser) {
         try {
-          // Get the latest ID Token from Firebase
-          const token = await firebaseUser.getIdToken(true);
-          localStorage.setItem('pp_token', token);
+          setUser(JSON.parse(savedUser));
+          setLoading(false);
 
-          // Fetch the profile from MySQL backend
+          // Fetch fresh user data from SQLite backend to verify session
           const res = await authAPI.getMe();
-          const userData = res.data.user;
-          localStorage.setItem('pp_user', JSON.stringify(userData));
-          setUser(userData);
+          const freshUser = res.data.user;
+          localStorage.setItem('pp_user', JSON.stringify(freshUser));
+          setUser(freshUser);
         } catch (err) {
-          console.error('Error fetching user profile from MySQL:', err);
-          // If we fail to fetch profile, log out of Firebase to keep states in sync
-          localStorage.removeItem('pp_token');
-          localStorage.removeItem('pp_user');
-          setUser(null);
+          console.error('Session verification failed, logging out:', err);
+          logout();
         }
       } else {
-        localStorage.removeItem('pp_token');
-        localStorage.removeItem('pp_user');
-        setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    initializeAuth();
   }, []);
 
   const login = async ({ email, password }) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const token = await userCredential.user.getIdToken();
+    const res = await authAPI.login({ email, password });
+    const { token, user: userData } = res.data;
+    
     localStorage.setItem('pp_token', token);
-
-    const res = await authAPI.getMe();
-    const userData = res.data.user;
     localStorage.setItem('pp_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
 
   const loginWithGoogle = async () => {
-    const userCredential = await signInWithPopup(auth, googleProvider);
-    const token = await userCredential.user.getIdToken();
-    localStorage.setItem('pp_token', token);
-
-    const res = await authAPI.getMe();
-    const userData = res.data.user;
-    localStorage.setItem('pp_user', JSON.stringify(userData));
-    setUser(userData);
-    return userData;
+    // Mock Google login for demo purposes since Firebase is removed
+    const mockUser = { 
+      id: 'google-user-id', 
+      name: 'Google User', 
+      email: 'google@gmail.com', 
+      role: 'student', 
+      department: 'CSE', 
+      batch: '2025',
+      skillPoints: 50,
+      streak: 1
+    };
+    localStorage.setItem('pp_token', 'mock-google-token');
+    localStorage.setItem('pp_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+    return mockUser;
   };
 
   const register = async (data) => {
-    const { email, password, name, role = 'student', department, batch } = data;
+    const { name, email, password, role = 'student', department, batch } = data;
     
-    // 1. Register user with Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const token = await userCredential.user.getIdToken();
+    // Register directly in SQLite backend
+    const res = await authAPI.register({ name, email, password, role, department, batch });
+    const { token, user: userData } = res.data;
+    
     localStorage.setItem('pp_token', token);
-
-    // 2. Register profile in MySQL (which will update the auto-created record)
-    const res = await authAPI.register({ name, role, department, batch });
-    const userData = res.data.user;
     localStorage.setItem('pp_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
 
-  const logout = async () => {
-    await signOut(auth);
+  const logout = () => {
     localStorage.removeItem('pp_token');
     localStorage.removeItem('pp_user');
     setUser(null);

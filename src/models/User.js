@@ -27,6 +27,26 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('student', 'faculty', 'admin', 'recruiter'),
     allowNull: false,
     defaultValue: 'student',
+  },
+  department: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  batch: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  streak: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  skillPoints: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  lastActive: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
 }, {
   timestamps: true,

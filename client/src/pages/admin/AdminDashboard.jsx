@@ -1,6 +1,28 @@
+import { useNavigate } from 'react-router-dom';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 
+const RECENT_SIGNUPS = [
+  { email: 'john.doe@demo.com', role: 'Student', when: '2 mins ago', status: 'active' },
+  { email: 'prof.smith@university.edu', role: 'Faculty', when: '1 hour ago', status: 'pending' },
+  { email: 'sarah.j@demo.com', role: 'Student', when: '3 hours ago', status: 'active' },
+];
+
+const exportCSV = (rows) => {
+  const headers = ['Email', 'Role', 'Joined', 'Status'];
+  const lines = [headers.join(','), ...rows.map(r => [r.email, r.role, r.when, r.status].join(','))];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `recent_signups_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   return (
     <ProtectedLayout title="Admin Portal" allowedRoles={['admin']}>
       <div className="grid grid-4 mb-xl">
@@ -34,7 +56,10 @@ export default function AdminDashboard() {
         <div className="card">
           <div className="flex justify-between items-center mb-md">
             <h3 className="font-bold">Recent Signups</h3>
-            <button className="btn btn-secondary btn-sm">View All Users</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-accent btn-sm" onClick={() => exportCSV(RECENT_SIGNUPS)}>📥 Export CSV</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => navigate('/admin/users')}>View All Users</button>
+            </div>
           </div>
           <table className="data-table">
             <thead>
@@ -46,24 +71,18 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="font-semibold text-primary">john.doe@demo.com</td>
-                <td>Student</td>
-                <td>2 mins ago</td>
-                <td><span className="badge badge-accent">Verified</span></td>
-              </tr>
-              <tr>
-                <td className="font-semibold text-primary">prof.smith@university.edu</td>
-                <td>Faculty</td>
-                <td>1 hour ago</td>
-                <td><span className="badge badge-warning">Pending Review</span></td>
-              </tr>
-              <tr>
-                <td className="font-semibold text-primary">sarah.j@demo.com</td>
-                <td>Student</td>
-                <td>3 hours ago</td>
-                <td><span className="badge badge-accent">Verified</span></td>
-              </tr>
+              {RECENT_SIGNUPS.map((u, i) => (
+                <tr key={i}>
+                  <td className="font-semibold text-primary">{u.email}</td>
+                  <td>{u.role}</td>
+                  <td>{u.when}</td>
+                  <td>
+                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, background: u.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: u.status === 'active' ? '#10b981' : '#f59e0b', border: `1px solid ${u.status === 'active' ? '#10b98155' : '#f59e0b55'}` }}>
+                      {u.status === 'active' ? 'Verified' : 'Pending Review'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
