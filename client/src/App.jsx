@@ -4,6 +4,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import LandingPage from './pages/LandingPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import CoursesPage from './pages/student/CoursesPage';
+import CourseDetailPage from './pages/student/CourseDetailPage';
 import AssessmentsPage from './pages/student/AssessmentsPage';
 import CodeEditorPage from './pages/student/CodeEditorPage';
 import LeaderboardPage from './pages/student/LeaderboardPage';
@@ -36,6 +37,7 @@ function App() {
         {/* Student Routes */}
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/student/courses" element={<CoursesPage />} />
+        <Route path="/student/courses/:courseId" element={<CourseDetailPage />} />
         <Route path="/student/assessments" element={<AssessmentsPage />} />
         <Route path="/student/code" element={<CodeEditorPage />} />
         <Route path="/student/leaderboard" element={<LeaderboardPage />} />
