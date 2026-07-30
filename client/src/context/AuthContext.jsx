@@ -40,6 +40,22 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         setLoading(false);
+
+        // Preserve Quick Demo sessions before clearing the state
+        const storedToken = localStorage.getItem('pp_token');
+        if (storedToken && storedToken.startsWith('mock_demo_token')) {
+          const demoUser = JSON.parse(localStorage.getItem('pp_user') || 'null');
+          if (demoUser) {
+            setUser(demoUser);
+          } else {
+            localStorage.removeItem('pp_token');
+            setUser(null);
+          }
+        } else {
+          localStorage.removeItem('pp_token');
+          localStorage.removeItem('pp_user');
+          setUser(null);
+        }
       }
 
     };

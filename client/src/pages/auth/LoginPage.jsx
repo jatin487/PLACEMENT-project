@@ -50,7 +50,7 @@ export default function LoginPage() {
     setLoading(true);
     setTimeout(() => {
       // Mocking the AuthContext login behavior manually for demo purposes
-      localStorage.setItem('pp_token', 'mock_demo_token');
+      localStorage.setItem('pp_token', `mock_demo_token_${role}`);
       localStorage.setItem('pp_user', JSON.stringify(demos[role]));
       
       // Force a page reload to let AuthContext pick up the mock user from localStorage
