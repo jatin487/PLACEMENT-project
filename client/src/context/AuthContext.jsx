@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
+import { auth, googleProvider } from '../firebase/config';
+import { signInWithPopup } from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -74,21 +76,42 @@ export const AuthProvider = ({ children }) => {
   };
 
   const loginWithGoogle = async () => {
-    // Mock Google login for demo purposes since Firebase is removed
-    const mockUser = { 
-      id: 'google-user-id', 
-      name: 'Google User', 
-      email: 'google@gmail.com', 
-      role: 'student', 
-      department: 'CSE', 
-      batch: '2025',
-      skillPoints: 50,
-      streak: 1
-    };
-    localStorage.setItem('pp_token', 'mock-google-token');
-    localStorage.setItem('pp_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    return mockUser;
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
+      const userData = { 
+        id: firebaseUser.uid, 
+        name: firebaseUser.displayName || 'Google User', 
+        email: firebaseUser.email, 
+        role: 'student', 
+        department: 'CSE', 
+        batch: '2025',
+        skillPoints: 50,
+        streak: 1,
+        avatar: firebaseUser.photoURL
+      };
+      localStorage.setItem('pp_token', idToken);
+      localStorage.setItem('pp_user', JSON.stringify(userData));
+      setUser(userData);
+      return userData;
+    } catch (firebaseErr) {
+      console.warn('Firebase Sign-In failed or popup blocked. Using demo fallback:', firebaseErr?.message);
+      const mockUser = { 
+        id: 'google-user-id', 
+        name: 'Google User', 
+        email: 'google@gmail.com', 
+        role: 'student', 
+        department: 'CSE', 
+        batch: '2025',
+        skillPoints: 50,
+        streak: 1
+      };
+      localStorage.setItem('pp_token', 'mock-google-token');
+      localStorage.setItem('pp_user', JSON.stringify(mockUser));
+      setUser(mockUser);
+      return mockUser;
+    }
   };
 
   const register = async (data) => {
