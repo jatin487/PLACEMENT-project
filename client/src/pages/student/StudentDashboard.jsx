@@ -1,5 +1,6 @@
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveStream } from '../../context/LiveStreamContext';
 import { useNavigate } from 'react-router-dom';
 import { MODULES, SAMPLE_BADGES } from '../../data/seedData';
 import {
@@ -18,185 +19,164 @@ const activityData = [
 ];
 
 const recentActivity = [
+  { title: 'NPTEL DAA Assignment 1', type: 'mock', score: 88, time: '1h ago' },
   { title: 'DSA: Arrays & Sorting', type: 'quiz', score: 88, time: '2h ago' },
   { title: 'DBMS MCQ Test', type: 'mcq', score: 92, time: '5h ago' },
   { title: 'Mock Placement Test', type: 'mock', score: 76, time: '1d ago' },
-  { title: 'OOP Lesson Completed', type: 'lesson', score: null, time: '1d ago' },
 ];
 
 const stats = [
   { icon: '📚', value: '12', label: 'Courses Enrolled', change: '+2 this week', color: 'var(--color-primary)' },
-  { icon: '📝', value: '47', label: 'Quizzes Taken', change: '+5 this week', color: 'var(--color-accent)' },
+  { icon: '📝', value: '47', label: 'Quizzes & NPTEL Tests', change: '+5 this week', color: 'var(--color-accent)' },
   { icon: '⭐', value: '2,840', label: 'Skill Points', change: '+150 today', color: 'var(--color-warning)' },
   { icon: '🏅', value: '3/6', label: 'Badges Earned', change: '1 new badge!', color: '#a855f7' },
 ];
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { activeStream } = useLiveStream();
   const navigate = useNavigate();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '🌅 Good Morning' : hour < 17 ? '☀️ Good Afternoon' : '🌙 Good Evening';
 
   return (
-    <ProtectedLayout title="Student Dashboard" allowedRoles={['student']}>
+    <ProtectedLayout title="Student Dashboard" allowedRoles={['student', 'faculty', 'admin']}>
+      {/* Active Live Stream Notification Widget */}
+      {activeStream?.isLive && (
+        <div className="card mb-lg p-md animate-fadeInUp" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(99,102,241,0.1) 100%)', border: '1px solid rgba(239,68,68,0.4)' }}>
+          <div className="flex justify-between items-center flex-wrap gap-md">
+            <div className="flex items-center gap-md">
+              <span className="badge" style={{ background: '#ef4444', color: '#fff', padding: '6px 12px', fontWeight: 'bold' }}>
+                🔴 LIVE NOW IN CLASSROOM
+              </span>
+              <div>
+                <h3 className="font-bold text-md">{activeStream.title}</h3>
+                <p className="text-xs text-secondary">Instructor: {activeStream.hostName} • 👥 {activeStream.viewersCount} Students watching</p>
+              </div>
+            </div>
+            <button className="btn btn-primary font-bold" onClick={() => navigate('/student/live/stream-dsa-live')}>
+              ▶ Join Live Class Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Welcome */}
-      <div className="page-header">
-        <h1 className="page-title">{greeting}, {user?.name?.split(' ')[0]}! 👋</h1>
-        <p className="page-subtitle">Ready to crack your placement? Let's keep the momentum going.</p>
+      <div className="page-header flex justify-between items-center flex-wrap gap-md">
+        <div>
+          <h1 className="page-title">{greeting}, {user?.name?.split(' ')[0] || 'Student'}! 👋</h1>
+          <p className="page-subtitle">Ready to crack your placement? Explore NPTEL tests & live lectures.</p>
+        </div>
+        <div className="flex gap-sm">
+          <button className="btn btn-secondary flex items-center gap-xs" onClick={() => navigate('/student/lectures')}>
+            📹 Video Lectures
+          </button>
+          <button className="btn btn-primary flex items-center gap-xs" onClick={() => navigate('/student/nptel-tests')}>
+            📝 NPTEL DSA & DAA Mock Tests
+          </button>
+        </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-4 animate-fadeInUp" style={{ marginBottom: '24px' }}>
         {stats.map((s, i) => (
-          <div key={i} className={`stat-card animate-delay-${i + 1}`} style={{ '--card-color': s.color }}>
+          <div key={i} className="stat-card" style={{ borderTop: `3px solid ${s.color}` }}>
             <div className="stat-icon">{s.icon}</div>
-            <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-value">{s.value}</div>
             <div className="stat-label">{s.label}</div>
             <div className="stat-change">{s.change}</div>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-2 animate-fadeInUp animate-delay-2" style={{ marginBottom: '24px' }}>
-        {/* Skill Radar */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-md">
-            <h3 className="text-lg font-bold">Skill Overview</h3>
-            <span className="badge badge-primary">Radar</span>
+      {/* Main Grid: Charts & Modules */}
+      <div className="grid grid-3" style={{ marginBottom: '24px' }}>
+        {/* Radar & Progress */}
+        <div className="card col-span-2">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">Skill Proficiency Breakdown</h2>
+              <p className="card-subtitle font-sans">Based on your recent assessment scores</p>
+            </div>
+            <span className="badge badge-accent">Overall: 75.8%</span>
           </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="rgba(255,255,255,0.06)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
-              <Radar name="Score" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} strokeWidth={2} />
-            </RadarChart>
-          </ResponsiveContainer>
+          <div style={{ height: '260px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="var(--border-color)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
+                <Radar name="Proficiency" dataKey="A" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.3} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Weekly Activity */}
+        {/* Activity Trend */}
         <div className="card">
-          <div className="flex items-center justify-between mb-md">
-            <h3 className="text-lg font-bold">Weekly Performance</h3>
-            <span className="badge badge-accent">This Week</span>
-          </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={activityData}>
-              <defs>
-                <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="day" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: '8px', color: 'var(--text-primary)' }} />
-              <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2} fill="url(#scoreGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-2 animate-fadeInUp animate-delay-3">
-        {/* Recent Activity */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-md">
-            <h3 className="text-lg font-bold">Recent Activity</h3>
-            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/student/assessments')}>View All</button>
-          </div>
-          {recentActivity.map((a, i) => (
-            <div key={i} className="flex items-center gap-md" style={{
-              padding: '12px 0',
-              borderBottom: i < recentActivity.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 'var(--radius-md)',
-                background: a.type === 'quiz' ? 'var(--color-primary-glow)' : a.type === 'mock' ? 'rgba(245,158,11,0.15)' : a.type === 'mcq' ? 'var(--color-accent-glow)' : 'var(--bg-glass)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, fontSize: '1.1rem',
-              }}>
-                {a.type === 'quiz' ? '📝' : a.type === 'mock' ? '🎯' : a.type === 'mcq' ? '✅' : '📚'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="font-semibold text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                <div className="text-xs text-muted">{a.time}</div>
-              </div>
-              {a.score !== null && (
-                <div className={`badge ${a.score >= 85 ? 'badge-accent' : a.score >= 70 ? 'badge-warning' : 'badge-danger'}`}>
-                  {a.score}%
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Quick Access + Badges */}
-        <div className="flex flex-col gap-md">
-          {/* Quick Actions */}
-          <div className="card">
-            <h3 className="text-lg font-bold mb-md">Quick Actions</h3>
-            <div className="grid grid-2" style={{ gap: '8px' }}>
-              {[
-                { label: 'Take MCQ Test', icon: '📝', path: '/student/assessments', color: 'var(--color-primary)' },
-                { label: 'Code Editor', icon: '💻', path: '/student/code', color: 'var(--color-accent)' },
-                { label: 'Mock Test', icon: '🎯', path: '/student/assessments', color: 'var(--color-warning)' },
-                { label: 'Leaderboard', icon: '🏆', path: '/student/leaderboard', color: '#a855f7' },
-              ].map((a, i) => (
-                <button key={i} onClick={() => navigate(a.path)}
-                  className="card" style={{ textAlign: 'center', cursor: 'pointer', padding: '16px 8px', border: `1px solid rgba(255,255,255,0.06)` }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '6px' }}>{a.icon}</div>
-                  <div className="text-xs font-semibold" style={{ color: a.color }}>{a.label}</div>
-                </button>
-              ))}
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">Weekly Momentum</h2>
+              <p className="card-subtitle font-sans">Score trend across 7 days</p>
             </div>
           </div>
-
-          {/* Badges Preview */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-md">
-              <h3 className="text-lg font-bold">My Badges</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => navigate('/student/badges')}>All Badges</button>
-            </div>
-            <div className="grid grid-3" style={{ gap: '8px' }}>
-              {SAMPLE_BADGES.slice(0, 6).map((b) => (
-                <div key={b.id} className={`achievement-badge ${b.earned ? 'earned' : ''}`}
-                  style={{ opacity: b.earned ? 1 : 0.4, padding: '10px 6px' }}>
-                  <div className="achievement-icon" style={{ fontSize: '1.75rem', filter: b.earned ? undefined : 'grayscale(1)' }}>{b.icon}</div>
-                  <div className="achievement-name" style={{ fontSize: '0.65rem' }}>{b.name}</div>
-                </div>
-              ))}
-            </div>
+          <div style={{ height: '260px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={activityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis dataKey="day" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
+                <YAxis domain={[50, 100]} tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} />
+                <Area type="monotone" dataKey="score" stroke="var(--color-accent)" fill="var(--color-accent)" fillOpacity={0.2} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Training Modules Preview */}
-      <div className="animate-fadeInUp" style={{ marginTop: '24px' }}>
-        <div className="flex items-center justify-between mb-md">
-          <h3 className="text-xl font-bold">Training Modules</h3>
-          <button className="btn btn-secondary" onClick={() => navigate('/student/courses')}>View All Courses →</button>
-        </div>
-        <div className="grid grid-4">
-          {MODULES.slice(0, 4).map((m) => (
-            <div key={m.id} className="course-card" onClick={() => navigate('/student/courses')}>
-              <div className="course-card-header" style={{ background: `linear-gradient(135deg, ${m.color}22, ${m.color}11)` }}>
-                <span style={{ fontSize: '3rem', filter: `drop-shadow(0 0 12px ${m.color}88)` }}>{m.icon}</span>
-              </div>
-              <div className="course-card-body">
-                <div className="course-card-title">{m.label}</div>
-                <div className="course-card-desc">{m.desc}</div>
-                <div className="flex items-center justify-between">
-                  <span className={`badge badge-${m.category === 'technical' ? 'primary' : m.category === 'professional' ? 'accent' : 'warning'}`}>
-                    {m.category}
-                  </span>
-                  <button className="btn btn-secondary btn-sm">Start →</button>
-                </div>
-              </div>
+      {/* Modules & Badges */}
+      <div className="grid grid-2" style={{ marginBottom: '24px' }}>
+        {/* Learning Modules */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">Placement Prep Modules</h2>
+              <p className="card-subtitle font-sans">Continue where you left off</p>
             </div>
-          ))}
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/student/courses')}>View All</button>
+          </div>
+          <div className="flex flex-col gap-sm">
+            {MODULES.slice(0, 3).map((m) => (
+              <div key={m.id} className="p-sm rounded flex items-center justify-between" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <div className="font-bold text-sm">{m.title}</div>
+                  <div className="text-xs text-secondary">{m.topicsCount} Topics • {m.completedTopics} Completed</div>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/student/courses/${m.id}`)}>Continue</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* NPTEL & Recent Activity */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">Recent Activity & Submissions</h2>
+              <p className="card-subtitle font-sans">Your recent test performance</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-sm">
+            {recentActivity.map((act, i) => (
+              <div key={i} className="flex justify-between items-center p-xs border-b">
+                <div>
+                  <div className="font-semibold text-sm">{act.title}</div>
+                  <div className="text-xs text-secondary">{act.time}</div>
+                </div>
+                <span className="badge badge-accent font-bold">{act.score}%</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </ProtectedLayout>

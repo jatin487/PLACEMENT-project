@@ -3,8 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 
 const studentNav = [
   { label: 'Dashboard', icon: '📊', path: '/student/dashboard' },
+  { label: 'Live Classroom', icon: '🔴', path: '/student/live/stream-dsa-live' },
+  { label: 'Video Lectures', icon: '📹', path: '/student/lectures' },
+  { label: 'NPTEL DSA & DAA', icon: '📝', path: '/student/nptel-tests' },
   { label: 'My Courses', icon: '📚', path: '/student/courses' },
-  { label: 'Assessments', icon: '📝', path: '/student/assessments' },
+  { label: 'Assessments', icon: '📋', path: '/student/assessments' },
   { label: 'Code Editor', icon: '💻', path: '/student/code' },
   { label: 'Leaderboard', icon: '🏆', path: '/student/leaderboard' },
   { label: 'My Badges', icon: '🏅', path: '/student/badges' },
@@ -12,6 +15,7 @@ const studentNav = [
 
 const facultyNav = [
   { label: 'Dashboard', icon: '📊', path: '/faculty/dashboard' },
+  { label: 'Live Studio', icon: '🔴', path: '/faculty/live-studio' },
   { label: 'Manage Courses', icon: '📚', path: '/faculty/courses' },
   { label: 'Create Quiz', icon: '➕', path: '/faculty/quizzes/create' },
   { label: 'Analytics', icon: '📈', path: '/faculty/analytics' },
@@ -61,11 +65,11 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user" onClick={() => navigate(`/${user?.role}/profile`)}>
+        <div className="sidebar-user" onClick={() => navigate(`/${user?.role}/dashboard`)}>
           <div className="user-avatar">{initials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="user-name">{user?.name}</div>
-            <div className="user-role">{user?.role}</div>
+            <div className="user-role" style={{ textTransform: 'capitalize' }}>{user?.role}</div>
           </div>
         </div>
         <button
