@@ -7,7 +7,7 @@ import {
   subscribeToChat,
   subscribeToStream,
   subscribeToViewerCount,
-  incrementViewers,
+  addViewer,
 } from '../../services/webrtcService';
 
 const ROOM_ID = 'classroom-live-1';
@@ -49,16 +49,24 @@ export default function StudentLiveStreamPage() {
     try {
       const viewer = new WebRTCViewer(ROOM_ID, viewerId.current);
       viewerRef.current = viewer;
-      const remoteStream = await viewer.connect();
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = remoteStream;
-      }
-      await incrementViewers(ROOM_ID);
+      // KEY FIX: set up callback BEFORE connecting so ontrack can fire directly into the video element
+      viewer.onRemoteStream = (stream) => {
+        console.log('Got remote stream, attaching to video element');
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => {
+            console.warn('Autoplay blocked, waiting for user interaction:', err);
+          });
+        }
+      };
+
+      await viewer.connect();
+      await addViewer(ROOM_ID);
       setIsConnected(true);
     } catch (err) {
       console.error('WebRTC viewer error:', err);
-      setConnectionError('Could not connect to the live stream. Please try again.');
+      setConnectionError(err.message || 'Could not connect to the live stream. Please try again.');
     } finally {
       setIsConnecting(false);
     }

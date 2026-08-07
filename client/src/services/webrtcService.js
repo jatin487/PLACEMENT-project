@@ -1,20 +1,24 @@
 /**
  * WebRTC + Firebase Realtime DB Signaling Service
- * Faculty (broadcaster) <-> Students (viewers) using WebRTC
- * Firebase RTDB used as signaling channel and live chat
+ * Real P2P live streaming: Faculty (broadcaster) → Students (viewers)
  */
 import { realtimeDb } from '../firebase/config';
-import { ref, set, onValue, push, remove, off, get } from 'firebase/database';
+import { ref, set, onValue, onChildAdded, push, remove, off, get } from 'firebase/database';
 
-const STUN_SERVERS = {
+// ICE servers: STUN (free) + TURN relay (for cross-network/production)
+const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    // Open Relay free TURN servers – enables NAT traversal for production
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ],
 };
 
-// ─── CHAT ────────────────────────────────────────────────────────────────────
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
 
 export const sendFirebaseMessage = async (roomId, sender, role, text) => {
   const msgRef = ref(realtimeDb, `rooms/${roomId}/chat`);
@@ -29,11 +33,12 @@ export const sendFirebaseMessage = async (roomId, sender, role, text) => {
 
 export const subscribeToChat = (roomId, callback) => {
   const msgRef = ref(realtimeDb, `rooms/${roomId}/chat`);
-  onValue(msgRef, (snapshot) => {
+  const handler = onValue(msgRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      const messages = Object.entries(data).map(([id, msg]) => ({ id, ...msg }));
-      messages.sort((a, b) => a.timestamp - b.timestamp);
+      const messages = Object.entries(data)
+        .map(([id, msg]) => ({ id, ...msg }))
+        .sort((a, b) => a.timestamp - b.timestamp);
       callback(messages);
     } else {
       callback([]);
@@ -42,7 +47,7 @@ export const subscribeToChat = (roomId, callback) => {
   return () => off(msgRef);
 };
 
-// ─── STREAM PRESENCE ─────────────────────────────────────────────────────────
+// ─── STREAM PRESENCE ──────────────────────────────────────────────────────────
 
 export const setStreamLive = async (roomId, streamInfo) => {
   await set(ref(realtimeDb, `rooms/${roomId}/stream`), {
@@ -54,7 +59,6 @@ export const setStreamLive = async (roomId, streamInfo) => {
 
 export const setStreamOffline = async (roomId) => {
   await set(ref(realtimeDb, `rooms/${roomId}/stream`), { isLive: false });
-  // Clean up WebRTC signaling data
   await remove(ref(realtimeDb, `rooms/${roomId}/signaling`));
 };
 
@@ -64,9 +68,14 @@ export const subscribeToStream = (roomId, callback) => {
   return () => off(streamRef);
 };
 
-export const incrementViewers = async (roomId) => {
-  const viewerRef = ref(realtimeDb, `rooms/${roomId}/viewers/${Date.now()}`);
-  await set(viewerRef, true);
+export const addViewer = async (roomId) => {
+  const vRef = push(ref(realtimeDb, `rooms/${roomId}/viewers`));
+  await set(vRef, true);
+  return vRef.key;
+};
+
+export const removeViewer = async (roomId, viewerKey) => {
+  if (viewerKey) await remove(ref(realtimeDb, `rooms/${roomId}/viewers/${viewerKey}`));
 };
 
 export const subscribeToViewerCount = (roomId, callback) => {
@@ -77,80 +86,105 @@ export const subscribeToViewerCount = (roomId, callback) => {
   return () => off(vRef);
 };
 
-// ─── WebRTC BROADCASTER (Faculty) ────────────────────────────────────────────
+// ─── WebRTC BROADCASTER (Faculty) ─────────────────────────────────────────────
 
 export class WebRTCBroadcaster {
   constructor(roomId) {
     this.roomId = roomId;
-    this.peers = {}; // viewerId -> RTCPeerConnection
+    this.peers = {};      // viewerId -> RTCPeerConnection
     this.localStream = null;
-    this.unsubscribeOffers = null;
+    this._cleanups = [];
   }
 
-  async startCamera(constraints = { video: true, audio: true }) {
+  /** Start real webcam + microphone */
+  async startCamera(constraints = { video: { width: 1280, height: 720 }, audio: true }) {
     this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
     return this.localStream;
   }
 
+  /** Replace video track with screen share */
   async startScreenShare() {
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      // Replace video track in local stream
-      if (this.localStream) {
-        const videoTrack = screenStream.getVideoTracks()[0];
-        const sender = Object.values(this.peers)[0]?.getSenders()?.find(s => s.track?.kind === 'video');
-        if (sender) sender.replaceTrack(videoTrack);
-        const oldVideoTrack = this.localStream.getVideoTracks()[0];
-        if (oldVideoTrack) this.localStream.removeTrack(oldVideoTrack);
-        this.localStream.addTrack(videoTrack);
-        screenStream.getVideoTracks()[0].onended = () => this.stopScreenShare();
-      }
-      return screenStream;
-    } catch (err) {
-      console.error('Screen share error:', err);
-      throw err;
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    const newVideoTrack = screenStream.getVideoTracks()[0];
+
+    // Replace in all existing peer connections
+    for (const pc of Object.values(this.peers)) {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) await sender.replaceTrack(newVideoTrack);
     }
+
+    // Replace in local stream (for local preview)
+    const oldTrack = this.localStream?.getVideoTracks()[0];
+    if (oldTrack) {
+      this.localStream.removeTrack(oldTrack);
+      oldTrack.stop();
+    }
+    this.localStream?.addTrack(newVideoTrack);
+
+    // Auto-switch back when user stops sharing
+    newVideoTrack.onended = () => this.stopScreenShare();
+
+    return this.localStream;
   }
 
   async stopScreenShare() {
-    // Switch back to camera
-    const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const videoTrack = camStream.getVideoTracks()[0];
-    Object.values(this.peers).forEach(pc => {
-      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-      if (sender) sender.replaceTrack(videoTrack);
-    });
+    try {
+      const camStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+      const newVideoTrack = camStream.getVideoTracks()[0];
+      for (const pc of Object.values(this.peers)) {
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) await sender.replaceTrack(newVideoTrack);
+      }
+      const oldTrack = this.localStream?.getVideoTracks()[0];
+      if (oldTrack) { this.localStream.removeTrack(oldTrack); oldTrack.stop(); }
+      this.localStream?.addTrack(newVideoTrack);
+    } catch (err) {
+      console.error('Error switching back to camera:', err);
+    }
   }
 
-  // Listen for viewer offer requests
+  /** Listen for new viewer offers and respond with answers */
   listenForViewers() {
     const offersRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/offers`);
-    onValue(offersRef, async (snap) => {
-      const offers = snap.val();
-      if (!offers) return;
-      for (const [viewerId, offer] of Object.entries(offers)) {
-        if (!this.peers[viewerId]) {
-          await this._handleViewerOffer(viewerId, offer);
-        }
-      }
+
+    // Use onChildAdded so we only process each offer ONCE
+    const unsub = onChildAdded(offersRef, async (snap) => {
+      const viewerId = snap.key;
+      const offer = snap.val();
+      if (!offer || this.peers[viewerId]) return;
+
+      console.log('Broadcaster: new viewer offer from', viewerId);
+      await this._createAnswerForViewer(viewerId, offer);
     });
-    this.unsubscribeOffers = () => off(offersRef);
+
+    this._cleanups.push(() => off(offersRef));
   }
 
-  async _handleViewerOffer(viewerId, offer) {
-    const pc = new RTCPeerConnection(STUN_SERVERS);
+  async _createAnswerForViewer(viewerId, offer) {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
     this.peers[viewerId] = pc;
 
-    // Add local tracks to connection
+    // Add all local tracks to this peer connection
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream));
+      this.localStream.getTracks().forEach(track => {
+        pc.addTrack(track, this.localStream);
+      });
     }
 
-    // Send ICE candidates to viewer
+    // Forward ICE candidates to this viewer's bucket in Firebase
     pc.onicecandidate = async (event) => {
       if (event.candidate) {
-        const candRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/broadcaster_ice/${viewerId}`);
-        await push(candRef, event.candidate.toJSON());
+        await push(
+          ref(realtimeDb, `rooms/${this.roomId}/signaling/broadcaster_ice/${viewerId}`),
+          event.candidate.toJSON()
+        );
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log(`Viewer ${viewerId} connection: ${pc.connectionState}`);
+      if (pc.connectionState === 'failed') {
+        pc.restartIce();
       }
     };
 
@@ -158,103 +192,130 @@ export class WebRTCBroadcaster {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
-    // Send answer to viewer
-    await set(ref(realtimeDb, `rooms/${this.roomId}/signaling/answers/${viewerId}`), {
-      type: answer.type,
-      sdp: answer.sdp,
-    });
+    // Write answer to Firebase for this viewer to pick up
+    await set(
+      ref(realtimeDb, `rooms/${this.roomId}/signaling/answers/${viewerId}`),
+      { type: answer.type, sdp: answer.sdp }
+    );
 
-    // Listen for viewer ICE candidates
+    // Listen for this viewer's ICE candidates
     const viewerIceRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/viewer_ice/${viewerId}`);
-    onValue(viewerIceRef, (snap) => {
-      const candidates = snap.val();
-      if (candidates) {
-        Object.values(candidates).forEach(c => {
-          pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.error);
-        });
+    onChildAdded(viewerIceRef, (snap) => {
+      const candidate = snap.val();
+      if (candidate) {
+        pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err =>
+          console.warn('Broadcaster addIceCandidate error:', err)
+        );
       }
     });
   }
 
   toggleMute(muted) {
-    if (this.localStream) {
-      this.localStream.getAudioTracks().forEach(track => { track.enabled = !muted; });
-    }
+    this.localStream?.getAudioTracks().forEach(t => { t.enabled = !muted; });
   }
 
   toggleCamera(off) {
-    if (this.localStream) {
-      this.localStream.getVideoTracks().forEach(track => { track.enabled = !off; });
-    }
+    this.localStream?.getVideoTracks().forEach(t => { t.enabled = !off; });
   }
 
   destroy() {
-    if (this.unsubscribeOffers) this.unsubscribeOffers();
+    this._cleanups.forEach(fn => fn());
     Object.values(this.peers).forEach(pc => pc.close());
-    if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
+    this.localStream?.getTracks().forEach(t => t.stop());
+    this.localStream = null;
+    this.peers = {};
   }
 }
 
-// ─── WebRTC VIEWER (Student) ─────────────────────────────────────────────────
+// ─── WebRTC VIEWER (Student) ──────────────────────────────────────────────────
 
 export class WebRTCViewer {
   constructor(roomId, viewerId) {
     this.roomId = roomId;
     this.viewerId = viewerId;
     this.pc = null;
-    this.remoteStream = null;
+    this.onRemoteStream = null; // callback(stream) set by component
   }
 
   async connect() {
-    this.pc = new RTCPeerConnection(STUN_SERVERS);
-    this.remoteStream = new MediaStream();
+    this.pc = new RTCPeerConnection(ICE_SERVERS);
 
+    // KEY FIX: Assign the real stream directly when tracks arrive
     this.pc.ontrack = (event) => {
-      event.streams[0].getTracks().forEach(track => this.remoteStream.addTrack(track));
+      console.log('Viewer: got remote track', event.track.kind);
+      if (event.streams && event.streams[0]) {
+        // Call back into the component to set the video srcObject
+        this.onRemoteStream?.(event.streams[0]);
+      }
+    };
+
+    this.pc.oniceconnectionstatechange = () => {
+      console.log('Viewer ICE state:', this.pc.iceConnectionState);
+    };
+
+    this.pc.onconnectionstatechange = () => {
+      console.log('Viewer connection state:', this.pc.connectionState);
     };
 
     // Send ICE candidates to broadcaster
     this.pc.onicecandidate = async (event) => {
       if (event.candidate) {
-        const candRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/viewer_ice/${this.viewerId}`);
-        await push(candRef, event.candidate.toJSON());
+        await push(
+          ref(realtimeDb, `rooms/${this.roomId}/signaling/viewer_ice/${this.viewerId}`),
+          event.candidate.toJSON()
+        );
       }
     };
 
-    // Create offer
-    const offer = await this.pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+    // Create offer requesting both audio+video from broadcaster
+    const offer = await this.pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
+    });
     await this.pc.setLocalDescription(offer);
 
-    // Send offer to broadcaster
-    await set(ref(realtimeDb, `rooms/${this.roomId}/signaling/offers/${this.viewerId}`), {
-      type: offer.type,
-      sdp: offer.sdp,
-    });
+    // Write offer to Firebase
+    await set(
+      ref(realtimeDb, `rooms/${this.roomId}/signaling/offers/${this.viewerId}`),
+      { type: offer.type, sdp: offer.sdp }
+    );
 
-    // Wait for broadcaster answer
+    // Wait for broadcaster's answer
     const answerRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/answers/${this.viewerId}`);
-    onValue(answerRef, async (snap) => {
-      const answer = snap.val();
-      if (answer && this.pc.signalingState !== 'stable') {
-        await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
-      }
-    });
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Broadcaster did not answer in time. Make sure faculty is live.')), 15000);
 
-    // Listen for broadcaster ICE candidates
-    const bcastIceRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/broadcaster_ice/${this.viewerId}`);
-    onValue(bcastIceRef, (snap) => {
-      const candidates = snap.val();
-      if (candidates) {
-        Object.values(candidates).forEach(c => {
-          this.pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.error);
-        });
-      }
-    });
+      const unsub = onValue(answerRef, async (snap) => {
+        const answer = snap.val();
+        if (!answer) return;
+        off(answerRef);
+        clearTimeout(timeout);
 
-    return this.remoteStream;
+        try {
+          if (this.pc.signalingState !== 'have-local-offer') return;
+          await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+          // Listen for broadcaster ICE candidates
+          const bcastIceRef = ref(realtimeDb, `rooms/${this.roomId}/signaling/broadcaster_ice/${this.viewerId}`);
+          onChildAdded(bcastIceRef, (snap) => {
+            const candidate = snap.val();
+            if (candidate) {
+              this.pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err =>
+                console.warn('Viewer addIceCandidate error:', err)
+              );
+            }
+          });
+
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
   }
 
   destroy() {
-    if (this.pc) this.pc.close();
+    this.pc?.close();
+    this.pc = null;
   }
 }
