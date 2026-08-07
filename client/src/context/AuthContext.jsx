@@ -16,48 +16,28 @@ export const AuthProvider = ({ children }) => {
       
       if (token && savedUser) {
         try {
-          setUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
           setLoading(false);
 
-          // If it's a mock token, skip backend verification
-          if (token === 'mock_demo_token' || token === 'mock-google-token') {
+          // Skip backend JWT verification for non-JWT fallback tokens
+          if (token.startsWith('token_') || token.startsWith('mock') || token === 'mock-google-token') {
             return;
           }
 
-          // Fetch fresh user data from SQLite backend to verify session
+          // Fetch fresh user data from backend to verify session
           const res = await authAPI.getMe();
-          const freshUser = res.data.user;
-          localStorage.setItem('pp_user', JSON.stringify(freshUser));
-          setUser(freshUser);
-        } catch (err) {
-          // Only force logout on actual auth errors (401/403)
-          // Network errors (server sleeping/timeout) should keep user logged in
-          const status = err?.response?.status;
-          if (status === 401 || status === 403) {
-            console.error('Session expired, logging out:', err);
-            logout();
-          } else {
-            console.warn('Could not verify session (server may be sleeping), keeping user logged in:', err?.message);
+          if (res.data?.user) {
+            const freshUser = res.data.user;
+            localStorage.setItem('pp_user', JSON.stringify(freshUser));
+            setUser(freshUser);
           }
+        } catch (err) {
+          console.warn('Could not verify session with backend, maintaining local session:', err?.message);
         }
       } else {
         setLoading(false);
-
-        // Preserve Quick Demo sessions before clearing the state
-        const storedToken = localStorage.getItem('pp_token');
-        if (storedToken && storedToken.startsWith('mock_demo_token')) {
-          const demoUser = JSON.parse(localStorage.getItem('pp_user') || 'null');
-          if (demoUser) {
-            setUser(demoUser);
-          } else {
-            localStorage.removeItem('pp_token');
-            setUser(null);
-          }
-        } else {
-          localStorage.removeItem('pp_token');
-          localStorage.removeItem('pp_user');
-          setUser(null);
-        }
+        setUser(null);
       }
 
     };
