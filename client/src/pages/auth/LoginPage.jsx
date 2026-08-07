@@ -39,27 +39,11 @@ export default function LoginPage() {
     }
   };
 
-  // Demo quick-login for Student, Faculty, and Admin
-  const demoLogin = (role) => {
-    const demos = {
-      student: { id: 1, name: 'Demo Student', email: 'student@demo.com', role: 'student', department: 'CSE', batch: '2025', skillPoints: 2840, streak: 5 },
-      faculty: { id: 2, name: 'Dr. Rajesh Sharma', email: 'faculty@demo.com', role: 'faculty', department: 'CSE' },
-      admin: { id: 3, name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' },
-    };
-    
-    setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('pp_token', `mock_demo_token_${role}`);
-      localStorage.setItem('pp_user', JSON.stringify(demos[role]));
-      window.location.href = `/${role}/dashboard`;
-    }, 400);
-  };
-
   return (
     <div className="auth-page">
       <div className="auth-bg" />
 
-      {/* Floating orbs */}
+      {/* Floating background orbs */}
       <div style={{
         position: 'absolute', top: '15%', left: '10%', width: 300, height: 300,
         borderRadius: '50%',
@@ -131,22 +115,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="divider" />
-
-        <div style={{ marginBottom: '12px' }}>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '8px' }}>
-            Quick Demo Login
-          </p>
-          <div className="flex gap-sm">
-            {['student', 'faculty', 'admin'].map((role) => (
-              <button key={role} onClick={() => demoLogin(role)}
-                className="btn btn-secondary btn-sm w-full"
-                style={{ textTransform: 'capitalize', fontSize: '0.75rem' }}>
-                {role === 'student' ? '🎓' : role === 'faculty' ? '👨‍🏫' : '⚙️'} {role}
-              </button>
-            ))}
-          </div>
-        </div>
+        <div className="divider" style={{ margin: '24px 0' }} />
 
         <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
           Don't have an account?{' '}
