@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'https://placement-project-2-78ac.onrender.com/api' });
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://placement-portal-api-8m6r.onrender.com/api',
+  timeout: 8000
+});
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('pp_token');
