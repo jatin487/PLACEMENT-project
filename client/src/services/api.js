@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://placement-portal-api-8m6r.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://placement-portal-sqlite-backend-31gm.onrender.com/api',
   timeout: 8000
 });
 

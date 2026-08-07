@@ -31,6 +31,18 @@ initializeDatabase()
     console.error('Unable to connect or sync with the database:', error);
   });
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: '🚀 Placement Portal API Backend is Live & Running!',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Placement Portal Backend is running' });
