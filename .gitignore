@@ -5,6 +5,7 @@ client/node_modules/
 # Environment files
 .env
 client/.env
+server/.env
 
 # SQLite local database
 database.sqlite

@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
+import ProctoringMonitor from '../../components/ui/ProctoringMonitor';
+import { useProctoringSession, SESSION_STATUS } from '../../hooks/useProctoringSession';
+import { useAuth } from '../../context/AuthContext';
 import { SAMPLE_MCQ } from '../../data/seedData';
 
 const QUIZ_TIME = 10 * 60; // 10 minutes in seconds
+const MAX_VIOLATIONS = 3;
+
+// ─── Timer Component ──────────────────────────────────────────────────────────
 
 function QuizTimer({ seconds, onExpire }) {
   const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
@@ -27,12 +33,69 @@ function QuizTimer({ seconds, onExpire }) {
   );
 }
 
-function MCQQuiz({ quiz, onFinish }) {
-  const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(QUIZ_TIME);
+// ─── Cancellation Screen ──────────────────────────────────────────────────────
+
+function CancellationScreen({ reason, assessmentTitle, onBack }) {
+  return (
+    <div className="card animate-fadeInUp" style={{ textAlign: 'center', padding: '56px 32px', maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ fontSize: '5rem', marginBottom: '16px' }}>🚫</div>
+      <h2 className="text-2xl font-bold" style={{ color: 'var(--color-danger)', marginBottom: '8px' }}>
+        Assessment Cancelled
+      </h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '1rem' }}>
+        Your session for <strong style={{ color: 'var(--text-primary)' }}>{assessmentTitle}</strong> has been
+        automatically cancelled due to proctoring violations.
+      </p>
+
+      <div className="card" style={{
+        background: 'rgba(239,68,68,0.08)',
+        border: '1px solid rgba(239,68,68,0.25)',
+        marginBottom: '32px',
+        textAlign: 'left',
+      }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600, letterSpacing: '0.05em' }}>
+          REASON
+        </div>
+        <div style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+          {reason || 'Maximum proctoring violations exceeded.'}
+        </div>
+      </div>
+
+      <div className="card" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: '32px', textAlign: 'left' }}>
+        <h4 className="font-bold" style={{ marginBottom: '10px', color: 'var(--color-danger)' }}>⚠️ What this means</h4>
+        <ul style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
+          <li>This session cannot be resumed or retaken</li>
+          <li>Your answers have not been scored</li>
+          <li>Contact your faculty if you believe this is an error</li>
+        </ul>
+      </div>
+
+      <button className="btn btn-secondary" onClick={onBack}>
+        ← Back to Assessments
+      </button>
+    </div>
+  );
+}
+
+// ─── Session Loading Screen ───────────────────────────────────────────────────
+
+function SessionLoadingScreen({ message }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '16px' }}>
+      <div className="animate-float" style={{ fontSize: '3rem' }}>🛡️</div>
+      <p style={{ color: 'var(--text-secondary)' }}>{message || 'Initializing proctored session…'}</p>
+    </div>
+  );
+}
+
+// ─── Proctored MCQ Quiz ───────────────────────────────────────────────────────
+
+function ProcturedMCQQuiz({ quiz, sessionId, violationCount, maxViolations, isCancelled, onViolation, onFinish }) {
+  const [currentQ, setCurrentQ]   = useState(0);
+  const [answers, setAnswers]     = useState({});
+  const [timeLeft, setTimeLeft]   = useState(QUIZ_TIME);
   const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult]       = useState(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -43,25 +106,36 @@ function MCQQuiz({ quiz, onFinish }) {
   }, []);
 
   useEffect(() => {
-    if (timeLeft === 0 && !submitted) {
-      handleSubmit();
-    }
+    if (timeLeft === 0 && !submitted) handleSubmit();
   }, [timeLeft, submitted]);
+
+  // If session gets cancelled externally (from Firestore listener), auto-stop quiz
+  useEffect(() => {
+    if (isCancelled && !submitted) {
+      clearInterval(timerRef.current);
+    }
+  }, [isCancelled, submitted]);
 
   const handleSelect = (questionId, answer) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     clearInterval(timerRef.current);
     let score = 0;
     quiz.questions.forEach((q) => {
       if (answers[q.id] === q.correct_answer) score++;
     });
     const pct = Math.round((score / quiz.questions.length) * 100);
-    setResult({ score, total: quiz.questions.length, percentage: pct });
+    const resultData = { score, total: quiz.questions.length, percentage: pct };
+    setResult(resultData);
     setSubmitted(true);
+    // Notify parent with answers + score so it can persist to Firestore
+    await onFinish({ answers, score: pct, submitted: true });
   };
+
+  // If externally cancelled mid-quiz
+  if (isCancelled) return null;
 
   if (submitted && result) {
     return (
@@ -108,12 +182,9 @@ function MCQQuiz({ quiz, onFinish }) {
           })}
         </div>
 
-        <div className="flex gap-md" style={{ justifyContent: 'center' }}>
-          <button className="btn btn-secondary" onClick={onFinish}>← Back to Assessments</button>
-          <button className="btn btn-primary" onClick={() => { setSubmitted(false); setAnswers({}); setCurrentQ(0); setTimeLeft(QUIZ_TIME); }}>
-            🔄 Retake Quiz
-          </button>
-        </div>
+        <button className="btn btn-secondary" onClick={() => onFinish({ done: true })}>
+          ← Back to Assessments
+        </button>
       </div>
     );
   }
@@ -216,6 +287,22 @@ function MCQQuiz({ quiz, onFinish }) {
               );
             })}
           </div>
+
+          {/* Violation info in navigator */}
+          {violationCount > 0 && (
+            <div style={{
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '10px',
+              marginBottom: '12px',
+              fontSize: '0.78rem',
+              color: 'var(--color-danger)',
+            }}>
+              ⚠️ {violationCount}/{maxViolations} violations recorded
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
             {[
               { color: 'var(--color-primary)', label: 'Current' },
@@ -234,36 +321,144 @@ function MCQQuiz({ quiz, onFinish }) {
   );
 }
 
+// ─── Quiz Wrapper with Proctoring ─────────────────────────────────────────────
+
+function ProcturedQuizWrapper({ assessment, onExitToList }) {
+  const { user } = useAuth();
+
+  const {
+    sessionId,
+    sessionStatus,
+    violationCount,
+    maxViolations,
+    cancellationReason,
+    isLoading,
+    isCancelled,
+    isSubmitted,
+    isActive,
+    reportViolation,
+    submitSession,
+  } = useProctoringSession({
+    assessmentId: String(assessment.id),
+    assessmentTitle: assessment.title,
+    maxViolations: MAX_VIOLATIONS,
+    totalQuestions: SAMPLE_MCQ.length,
+    // Only enable proctoring for real Firebase sessions (not demo/fallback tokens)
+    enabled: true,
+  });
+
+  const [quizDone, setQuizDone] = useState(false);
+
+  // ── Handle quiz completion ──────────────────────────────────────────────
+  const handleQuizFinish = async ({ answers, score, done }) => {
+    if (done) {
+      onExitToList();
+      return;
+    }
+    // Submit the session through the trusted backend
+    await submitSession({ answers: answers || {}, score: score || 0 });
+    setQuizDone(true);
+  };
+
+  // ── Loading state ───────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <ProtectedLayout title={assessment.title} allowedRoles={['student']}>
+        <SessionLoadingScreen
+          message={
+            sessionStatus === SESSION_STATUS.CHECKING
+              ? 'Checking for existing sessions…'
+              : 'Initializing proctored session…'
+          }
+        />
+      </ProtectedLayout>
+    );
+  }
+
+  // ── Cancelled state (persisted from Firestore) ──────────────────────────
+  if (isCancelled) {
+    return (
+      <ProtectedLayout title="Assessment Cancelled" allowedRoles={['student']}>
+        <CancellationScreen
+          reason={cancellationReason}
+          assessmentTitle={assessment.title}
+          onBack={onExitToList}
+        />
+      </ProtectedLayout>
+    );
+  }
+
+  return (
+    <ProtectedLayout title={`${assessment.title} — Proctored`} allowedRoles={['student']}>
+      {/* Proctoring Monitor — renders webcam + behavioral listeners */}
+      <ProctoringMonitor
+        sessionId={sessionId}
+        violationCount={violationCount}
+        maxViolations={maxViolations}
+        isCancelled={isCancelled}
+        onViolation={reportViolation}
+        webcamEnabled={true}
+      />
+
+      {/* Quiz content */}
+      {isActive && !quizDone && (
+        <ProcturedMCQQuiz
+          quiz={{ title: assessment.title, questions: SAMPLE_MCQ }}
+          sessionId={sessionId}
+          violationCount={violationCount}
+          maxViolations={maxViolations}
+          isCancelled={isCancelled}
+          onViolation={reportViolation}
+          onFinish={handleQuizFinish}
+        />
+      )}
+
+      {/* Submitted state — after quiz completes */}
+      {(isSubmitted || quizDone) && !isCancelled && (
+        <div className="card animate-fadeInUp" style={{ textAlign: 'center', padding: '48px 32px' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '16px' }}>✅</div>
+          <h2 className="text-2xl font-bold" style={{ marginBottom: '8px' }}>Session Submitted!</h2>
+          <p className="text-secondary" style={{ marginBottom: '24px' }}>
+            Your answers have been securely saved and the session is now closed.
+          </p>
+          <button className="btn btn-secondary" onClick={onExitToList}>← Back to Assessments</button>
+        </div>
+      )}
+    </ProtectedLayout>
+  );
+}
+
+// ─── Assessments List Page ────────────────────────────────────────────────────
+
 export default function AssessmentsPage() {
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab]   = useState('all');
   const [activeQuiz, setActiveQuiz] = useState(null);
 
   const quizTypes = [
-    { id: 'all', label: 'All Tests', icon: '📋' },
-    { id: 'mcq', label: 'MCQ Tests', icon: '📝' },
-    { id: 'coding', label: 'Coding', icon: '💻' },
-    { id: 'mock', label: 'Mock Tests', icon: '🎯' },
+    { id: 'all',    label: 'All Tests',   icon: '📋' },
+    { id: 'mcq',    label: 'MCQ Tests',   icon: '📝' },
+    { id: 'coding', label: 'Coding',      icon: '💻' },
+    { id: 'mock',   label: 'Mock Tests',  icon: '🎯' },
   ];
 
   const assessments = [
-    { id: 1, title: 'DSA Fundamentals MCQ', type: 'mcq', questions: 20, time: 30, difficulty: 'medium', topics: ['Arrays', 'Sorting', 'Searching'] },
-    { id: 2, title: 'DBMS Comprehensive Test', type: 'mcq', questions: 25, time: 40, difficulty: 'hard', topics: ['SQL', 'Normalization'] },
-    { id: 3, title: 'Aptitude Reasoning Test', type: 'mcq', questions: 30, time: 45, difficulty: 'medium', topics: ['Quant', 'Logical'] },
-    { id: 4, title: 'Full Mock Placement Test', type: 'mock', questions: 60, time: 90, difficulty: 'hard', topics: ['All Topics'] },
-    { id: 5, title: 'Two Sum Problem', type: 'coding', questions: 1, time: 20, difficulty: 'easy', topics: ['Arrays', 'HashMap'] },
-    { id: 6, title: 'Binary Search Challenge', type: 'coding', questions: 1, time: 15, difficulty: 'medium', topics: ['DSA', 'Binary Search'] },
+    { id: 1, title: 'DSA Fundamentals MCQ',       type: 'mcq',    questions: 20, time: 30, difficulty: 'medium', topics: ['Arrays', 'Sorting', 'Searching'] },
+    { id: 2, title: 'DBMS Comprehensive Test',     type: 'mcq',    questions: 25, time: 40, difficulty: 'hard',   topics: ['SQL', 'Normalization'] },
+    { id: 3, title: 'Aptitude Reasoning Test',     type: 'mcq',    questions: 30, time: 45, difficulty: 'medium', topics: ['Quant', 'Logical'] },
+    { id: 4, title: 'Full Mock Placement Test',    type: 'mock',   questions: 60, time: 90, difficulty: 'hard',   topics: ['All Topics'] },
+    { id: 5, title: 'Two Sum Problem',             type: 'coding', questions: 1,  time: 20, difficulty: 'easy',   topics: ['Arrays', 'HashMap'] },
+    { id: 6, title: 'Binary Search Challenge',     type: 'coding', questions: 1,  time: 15, difficulty: 'medium', topics: ['DSA', 'Binary Search'] },
   ];
 
   const filtered = activeTab === 'all' ? assessments : assessments.filter(a => a.type === activeTab);
 
+  // ── Active quiz renders the proctored wrapper ──────────────────────────
   if (activeQuiz) {
     return (
-      <ProtectedLayout title="MCQ Quiz" allowedRoles={['student']}>
-        <MCQQuiz
-          quiz={{ title: activeQuiz.title, questions: SAMPLE_MCQ }}
-          onFinish={() => setActiveQuiz(null)}
-        />
-      </ProtectedLayout>
+      <ProcturedQuizWrapper
+        assessment={activeQuiz}
+        onExitToList={() => setActiveQuiz(null)}
+      />
     );
   }
 
@@ -272,6 +467,28 @@ export default function AssessmentsPage() {
       <div className="page-header">
         <h1 className="page-title">Assessments 📝</h1>
         <p className="page-subtitle">Topic-wise MCQs, coding challenges, and full mock placement tests.</p>
+      </div>
+
+      {/* Proctoring Notice Banner */}
+      <div className="card animate-fadeInUp" style={{
+        background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1))',
+        border: '1px solid rgba(99,102,241,0.25)',
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '14px 20px',
+      }}>
+        <span style={{ fontSize: '1.5rem' }}>🛡️</span>
+        <div>
+          <div className="font-semibold text-sm" style={{ color: 'var(--color-primary-light)' }}>
+            Proctored Assessments
+          </div>
+          <div className="text-xs text-muted" style={{ marginTop: '2px' }}>
+            All MCQ and mock tests are monitored. Tab switching, fullscreen exits, and copy-paste are tracked.
+            Your session state is securely stored — refreshing the page will resume your session.
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -288,10 +505,10 @@ export default function AssessmentsPage() {
       {/* Stats */}
       <div className="grid grid-4 animate-fadeInUp" style={{ marginBottom: '24px' }}>
         {[
-          { icon: '✅', value: '23', label: 'Tests Completed', color: 'var(--color-accent)' },
-          { icon: '📊', value: '78%', label: 'Average Score', color: 'var(--color-primary)' },
-          { icon: '🔥', value: '5', label: 'Day Streak', color: 'var(--color-warning)' },
-          { icon: '🏆', value: '#12', label: 'Leaderboard Rank', color: '#a855f7' },
+          { icon: '✅', value: '23',  label: 'Tests Completed',  color: 'var(--color-accent)'   },
+          { icon: '📊', value: '78%', label: 'Average Score',    color: 'var(--color-primary)'  },
+          { icon: '🔥', value: '5',   label: 'Day Streak',       color: 'var(--color-warning)'  },
+          { icon: '🏆', value: '#12', label: 'Leaderboard Rank', color: '#a855f7'               },
         ].map((s, i) => (
           <div key={i} className="stat-card">
             <div className="stat-icon">{s.icon}</div>
@@ -316,6 +533,11 @@ export default function AssessmentsPage() {
                 <span className={`badge badge-${a.difficulty === 'hard' ? 'danger' : a.difficulty === 'medium' ? 'warning' : 'accent'}`}>
                   {a.difficulty}
                 </span>
+                {a.type !== 'coding' && (
+                  <span className="badge" style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--color-primary-light)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                    🛡️ Proctored
+                  </span>
+                )}
               </div>
               <div className="flex gap-md text-xs text-muted">
                 <span>📋 {a.questions} questions</span>
@@ -325,7 +547,11 @@ export default function AssessmentsPage() {
             </div>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => a.type === 'mcq' ? setActiveQuiz(a) : a.type === 'coding' ? window.location.href = '/student/code' : setActiveQuiz(a)}
+              onClick={() =>
+                a.type === 'coding'
+                  ? (window.location.href = '/student/code')
+                  : setActiveQuiz(a)
+              }
             >
               {a.type === 'coding' ? 'Open Editor →' : 'Start Test →'}
             </button>

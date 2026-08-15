@@ -1,25 +1,35 @@
 require('dotenv').config();
+// Also load server/.env for Firebase Admin credentials (local dev)
+require('dotenv').config({ path: require('path').resolve(__dirname, '../server/.env'), override: false });
+
 const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./models');
 const authRoutes = require('./routes/authRoutes');
+const proctoringRoutes = require('./routes/proctoringRoutes');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+// Existing auth routes (SQLite-backed)
 app.use('/api/auth', authRoutes);
+
+// Proctoring routes (Firebase Admin / Firestore-backed)
+app.use('/api/proctoring', proctoringRoutes);
+
+// ── Database init ─────────────────────────────────────────────────────────────
 
 const initializeDatabase = require('./config/initDb');
 
-// Database Sync and Server Start
 const PORT = process.env.PORT || 5000;
 
 initializeDatabase()
   .then(() => {
-    return sequelize.sync({ alter: true }); // Using alter to automatically update tables
+    return sequelize.sync({ alter: true });
   })
   .then(() => {
     console.log('Database connected and models synchronized.');
@@ -38,7 +48,8 @@ app.get('/', (req, res) => {
     message: '🚀 Placement Portal API Backend is Live & Running!',
     endpoints: {
       health: '/health',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      proctoring: '/api/proctoring',
     }
   });
 });

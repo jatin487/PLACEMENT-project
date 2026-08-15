@@ -1,8 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Users Collection ──────────────────────────────────────────────────────
+    // Users can read and update their own profile.
+    // Creation is handled by the backend (Firebase Admin SDK on first login).
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow users to update safe profile fields only
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'uid', 'created_at']);
+    }
+
+    // ─── Assessment Sessions ───────────────────────────────────────────────────
+    //
+    // SECURITY MODEL:
+    //   - Candidates can READ their own sessions (for real-time status updates)
+    //   - Candidates CANNOT write sensitive fields: status, violationCount,
+    //     cancelledAt, cancellationReason, submittedAt, score
+    //   - All privileged writes go through the backend (Admin SDK bypasses rules)
+    //   - Candidates can only update the `answers` field during an active session
+    //
+    match /assessmentSessions/{sessionId} {
+
+      // Candidate can read their own session (for real-time Firestore listener)
+      allow read: if request.auth != null
+        && resource.data.candidateId == request.auth.uid;
+
+      // Candidate can create a session document only for themselves.
+      // However, we prefer the backend (Admin SDK) to create sessions.
+      // This rule is a fallback — the controller is the primary creation path.
+      allow create: if request.auth != null
+        && request.resource.data.candidateId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.violationCount == 0
+        && request.resource.data.keys().hasAll([
+             'candidateId', 'assessmentId', 'status',
+             'startedAt', 'violationCount', 'maxViolations'
+           ]);
+
+      // Candidates may ONLY update the `answers` field on their own active session.
+      // All other fields (status, violationCount, cancelledAt, etc.) are read-only
+      // from the client — they must be updated through the trusted backend API.
+      allow update: if request.auth != null
+        && resource.data.candidateId == request.auth.uid
+        && resource.data.status == 'active'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers']);
+
+      // No client-side deletes
+      allow delete: if false;
+
+      // ─── Violations Sub-Collection ──────────────────────────────────────────
+      //
+      // Violations are written exclusively by the backend (Admin SDK).
+      // Candidates can only READ their own violations (for display purposes).
+      // No client writes are permitted.
+      //
+      match /violations/{violationId} {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/assessmentSessions/$(sessionId))
+              .data.candidateId == request.auth.uid;
+        allow write: if false;
+      }
+    }
+
+    // ─── Realtime signaling (used by WebRTC live streaming) ───────────────────
+    // Keep open for the live stream feature — this is Realtime DB, not Firestore,
+    // but documenting here for completeness. (No Firestore rules needed for RTDB.)
+
+    // ─── Catch-all: deny all other reads/writes ─────────────────────────────
+    // Replace the previous "allow read, write: if true" wildcard.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
