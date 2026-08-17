@@ -669,7 +669,7 @@ img { max-width: 100%; }
 .assessment-row:hover { box-shadow: var(--shadow-md); border-color: #cbd5e1; }
 
 /* ============================================
-   LIVE STUDIO & VIDEO STREAM RESPONSIVE
+   LIVE STUDIO & DASHBOARD RESPONSIVE
    ============================================ */
 .live-studio-grid {
   display: grid;
@@ -677,8 +677,15 @@ img { max-width: 100%; }
   gap: 20px;
 }
 
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
 @media (max-width: 992px) {
-  .live-studio-grid {
+  .live-studio-grid,
+  .dashboard-charts-grid {
     grid-template-columns: 1fr !important;
   }
 }
@@ -711,11 +718,19 @@ img { max-width: 100%; }
   
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
   }
   .sidebar.open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
+  }
+
+  .mobile-hamburger-btn {
+    display: flex !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
   }
 
   .grid-2, .grid-3, .grid-4 {
@@ -736,7 +751,7 @@ img { max-width: 100%; }
   }
 
   .topbar {
-    padding: 0 14px !important;
+    padding: 0 12px !important;
   }
 
   .btn {

@@ -76,37 +76,56 @@ export default function StudentDashboard() {
         .module-row:hover { background: rgba(139,92,246,0.07); border-color: rgba(139,92,246,0.2) !important; }
       `}</style>
 
-      {/* Live Stream Banner */}
+      {/* Live Stream Banner — Automatically appears whenever Faculty goes live */}
       {activeStream?.isLive && (
         <div style={{
-          background: 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(139,92,246,0.08) 100%)',
-          border: '1px solid rgba(239,68,68,0.3)',
+          background: 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(139,92,246,0.1) 100%)',
+          border: '1px solid rgba(239,68,68,0.35)',
           borderRadius: 16, padding: '16px 20px', marginBottom: 24,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14,
           animation: 'liveGlow 2s ease-in-out infinite',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <span style={{ background: '#ef4444', color: '#fff', padding: '5px 12px', borderRadius: 100, fontWeight: 700, fontSize: '0.78rem', letterSpacing: '0.04em', boxShadow: '0 0 12px rgba(239,68,68,0.5)' }}>🔴 LIVE NOW</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#ef4444', color: '#fff', padding: '5px 12px',
+              borderRadius: 100, fontWeight: 700, fontSize: '0.78rem',
+              letterSpacing: '0.04em', boxShadow: '0 0 12px rgba(239,68,68,0.5)',
+              display: 'inline-flex', alignItems: 'center', gap: '5px'
+            }}>
+              🔴 LIVE NOW
+            </span>
             <div>
-              <h3 style={{ fontWeight: 700, color: '#f1f5f9' }}>{activeStream.title}</h3>
-              <p style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>Instructor: {activeStream.hostName} • 👥 {activeStream.viewersCount} watching</p>
+              <h3 style={{ fontWeight: 700, color: '#f1f5f9', fontSize: '1rem' }}>{activeStream.title}</h3>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 2 }}>
+                Instructor: {activeStream.hostName} • 👥 {activeStream.viewersCount || 42} watching
+              </p>
             </div>
           </div>
-          <button onClick={() => navigate('/student/live/stream-dsa-live')} style={{ padding: '10px 22px', borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: '0.875rem', boxShadow: '0 4px 15px rgba(139,92,246,0.35)' }}>
+          <button
+            onClick={() => navigate('/student/live/stream-dsa-live')}
+            style={{
+              padding: '10px 22px', borderRadius: 10,
+              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+              color: 'white', fontWeight: 700, border: 'none',
+              cursor: 'pointer', fontSize: '0.875rem',
+              boxShadow: '0 4px 15px rgba(239,68,68,0.35)',
+              flexShrink: 0
+            }}
+          >
             ▶ Join Live Class
           </button>
         </div>
       )}
 
       {/* Welcome Header */}
-      <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f1f5f9', marginBottom: 4, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f1f5f9', marginBottom: 4, letterSpacing: '-0.02em' }}>
             {greeting}, <span style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user?.name?.split(' ')[0] || 'Student'}</span>! 👋
           </h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Ready to crack your placement? Let's continue where you left off.</p>
+          <p style={{ color: '#64748b', fontSize: '0.88rem' }}>Ready to crack your placement? Let's continue where you left off.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button onClick={() => navigate('/student/lectures')} style={{ padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.15)', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
             📹 Lectures
           </button>
@@ -117,12 +136,12 @@ export default function StudentDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="grid-4 mb-lg" style={{ gap: 14 }}>
         {stats.map((s, i) => (
-          <div key={i} className="stat-card-new" style={{ background: s.gradient, border: `1px solid ${s.color}25`, padding: '20px', position: 'relative', overflow: 'hidden' }}>
+          <div key={i} className="stat-card-new" style={{ background: s.gradient, border: `1px solid ${s.color}25`, padding: '18px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: 80, height: 80, background: `radial-gradient(circle, ${s.color}20 0%, transparent 70%)`, borderRadius: '0 0 0 80px' }} />
-            <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>{s.icon}</div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f1f5f9', marginBottom: '2px', letterSpacing: '-0.02em' }}>{s.value}</div>
+            <div style={{ fontSize: '1.6rem', marginBottom: '6px' }}>{s.icon}</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f1f5f9', marginBottom: '2px', letterSpacing: '-0.02em' }}>{s.value}</div>
             <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>{s.label}</div>
             <div style={{ fontSize: '0.72rem', color: s.color, fontWeight: 600, marginTop: '6px' }}>↑ {s.change}</div>
           </div>
@@ -130,17 +149,17 @@ export default function StudentDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div className="grid-4 mb-lg" style={{ gap: 12 }}>
         {quickActions.map((a, i) => (
-          <div key={i} className="quick-action" onClick={() => navigate(a.path)} style={{ background: `linear-gradient(135deg, ${a.color}15, ${a.color}05)`, border: `1px solid ${a.color}20`, padding: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.4rem' }}>{a.icon}</span>
+          <div key={i} className="quick-action" onClick={() => navigate(a.path)} style={{ background: `linear-gradient(135deg, ${a.color}15, ${a.color}05)`, border: `1px solid ${a.color}20`, padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.3rem' }}>{a.icon}</span>
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#94a3b8' }}>{a.label}</span>
           </div>
         ))}
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 24 }}>
+      <div className="dashboard-charts-grid mb-lg">
         {/* Radar */}
         <div style={{ background: '#0f1629', border: '1px solid rgba(139,92,246,0.12)', borderRadius: 16, padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -150,7 +169,7 @@ export default function StudentDashboard() {
             </div>
             <span style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', padding: '4px 12px', borderRadius: 100, fontSize: '0.72rem', fontWeight: 700 }}>Overall: 75.8%</span>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid stroke="rgba(139,92,246,0.15)" />
@@ -167,7 +186,7 @@ export default function StudentDashboard() {
             <h3 style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>Weekly Momentum</h3>
             <p style={{ fontSize: '0.78rem', color: '#64748b' }}>Score trend this week</p>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={activityData}>
                 <defs>
@@ -188,7 +207,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Bottom Row: Modules + Activity */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-2" style={{ gap: 20 }}>
         {/* Learning Modules */}
         <div style={{ background: '#0f1629', border: '1px solid rgba(139,92,246,0.12)', borderRadius: 16, padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
