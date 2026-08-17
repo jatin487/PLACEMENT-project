@@ -3,24 +3,33 @@ import { lectureAPI } from '../services/api';
 
 const LiveStreamContext = createContext(null);
 
+const DEFAULT_STREAM = {
+  isLive: false,
+  id: 'stream-dsa-live',
+  title: 'Data Structures & Algorithms: Master Graph Algorithms & Dynamic Programming',
+  subject: 'DSA & DAA Masterclass',
+  hostName: 'Dr. Rajesh Sharma (Head of CSE)',
+  hostRole: 'Faculty',
+  viewersCount: 42,
+  streamType: 'webcam', // 'webcam' or 'youtube'
+  youtubeUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  chatMessages: [
+    { id: 1, sender: 'Priya Verma', role: 'Student', text: 'Good evening sir! Will we cover Dijkstra vs Bellman-Ford today?', time: '20:30' },
+    { id: 2, sender: 'Amit Kumar', role: 'Student', text: 'Sir can you explain the space complexity of Floyd-Warshall again?', time: '20:31' },
+    { id: 3, sender: 'Dr. Rajesh Sharma', role: 'Faculty', text: 'Yes Priya! We are covering Graph Shortest Paths right now.', time: '20:32' },
+  ],
+};
+
 export const LiveStreamProvider = ({ children }) => {
-  // Active live stream state
-  const [activeStream, setActiveStream] = useState({
-    isLive: true,
-    id: 'stream-dsa-live',
-    title: 'Data Structures & Algorithms: Master Graph Algorithms & Dynamic Programming',
-    subject: 'DSA & DAA Masterclass',
-    hostName: 'Dr. Rajesh Sharma (Head of CSE)',
-    hostRole: 'Faculty',
-    viewersCount: 42,
-    streamType: 'webcam', // 'webcam' or 'youtube'
-    youtubeUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    chatMessages: [
-      { id: 1, sender: 'Priya Verma', role: 'Student', text: 'Good evening sir! Will we cover Dijkstra vs Bellman-Ford today?', time: '20:30' },
-      { id: 2, sender: 'Amit Kumar', role: 'Student', text: 'Sir can you explain the space complexity of Floyd-Warshall again?', time: '20:31' },
-      { id: 3, sender: 'Dr. Rajesh Sharma', role: 'Faculty', text: 'Yes Priya! We are covering Graph Shortest Paths right now.', time: '20:32' },
-    ],
+  // Active live stream state (loads from localStorage if present)
+  const [activeStream, setActiveStream] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pp_active_stream');
+      return saved ? JSON.parse(saved) : DEFAULT_STREAM;
+    } catch {
+      return DEFAULT_STREAM;
+    }
   });
 
   // Initial uploaded lectures library (synced with MySQL backend)
@@ -63,19 +72,67 @@ export const LiveStreamProvider = ({ children }) => {
     }
   ]);
 
-  // Fetch lectures from MySQL backend on mount
+  // Persist active stream & sync with BroadcastChannel
   useEffect(() => {
-    const fetchLectures = async () => {
-      try {
-        const res = await lectureAPI.getAll();
-        if (res.data?.data && res.data.data.length > 0) {
-          setLectures(res.data.data);
+    try {
+      localStorage.setItem('pp_active_stream', JSON.stringify(activeStream));
+    } catch (e) {
+      console.warn('Storage sync error:', e);
+    }
+  }, [activeStream]);
+
+  // Listen to cross-tab updates via BroadcastChannel or storage event
+  useEffect(() => {
+    let bc;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('placement_livestream_channel');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'STREAM_UPDATE') {
+          setActiveStream(event.data.payload);
         }
-      } catch (err) {
-        console.info('Backend lectures offline, using seeded state.');
+      };
+    }
+
+    const handleStorage = (e) => {
+      if (e.key === 'pp_active_stream' && e.newValue) {
+        try {
+          setActiveStream(JSON.parse(e.newValue));
+        } catch {}
       }
     };
-    fetchLectures();
+
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      bc?.close();
+    };
+  }, []);
+
+  const broadcastStreamUpdate = (updatedStream) => {
+    setActiveStream(updatedStream);
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('placement_livestream_channel');
+        bc.postMessage({ type: 'STREAM_UPDATE', payload: updatedStream });
+        bc.close();
+      }
+    } catch {}
+  };
+
+  // Fetch lectures from MySQL backend on mount
+  const refreshLectures = async () => {
+    try {
+      const res = await lectureAPI.getAll();
+      if (res.data?.data && res.data.data.length > 0) {
+        setLectures(res.data.data);
+      }
+    } catch (err) {
+      console.info('Backend lectures offline, using current state.');
+    }
+  };
+
+  useEffect(() => {
+    refreshLectures();
   }, []);
 
   // Start a new live stream
@@ -83,42 +140,42 @@ export const LiveStreamProvider = ({ children }) => {
     const newStream = {
       isLive: true,
       id: `stream-${Date.now()}`,
-      title: streamDetails.title,
+      title: streamDetails.title || 'Live Interactive Lecture',
       subject: streamDetails.subject || 'Placement Special',
-      hostName: streamDetails.hostName || 'Faculty',
+      hostName: streamDetails.hostName || 'Faculty Instructor',
       hostRole: 'Faculty',
-      viewersCount: 1,
+      viewersCount: Math.floor(Math.random() * 10) + 1,
       streamType: streamDetails.streamType || 'webcam',
       youtubeUrl: streamDetails.youtubeUrl || '',
       startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       chatMessages: [
-        { id: 1, sender: streamDetails.hostName || 'Faculty', role: 'Faculty', text: 'Welcome everyone! Live class has started.', time: 'Just now' }
+        { id: 1, sender: streamDetails.hostName || 'Faculty', role: 'Faculty', text: '🎙️ Welcome everyone! Live broadcast is now started.', time: 'Just now' }
       ]
     };
-    setActiveStream(newStream);
+    broadcastStreamUpdate(newStream);
   };
 
   // End active live stream
   const endLiveStream = () => {
-    if (activeStream) {
-      setActiveStream(prev => ({ ...prev, isLive: false }));
-    }
+    const closed = { ...activeStream, isLive: false };
+    broadcastStreamUpdate(closed);
   };
 
   // Add message to live chat
   const sendChatMessage = (senderName, role, messageText) => {
-    if (!activeStream || !activeStream.isLive) return;
+    if (!messageText?.trim()) return;
     const msg = {
       id: Date.now(),
-      sender: senderName,
-      role: role,
-      text: messageText,
+      sender: senderName || 'Student',
+      role: role || 'Student',
+      text: messageText.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    setActiveStream(prev => ({
-      ...prev,
-      chatMessages: [...prev.chatMessages, msg]
-    }));
+    const updated = {
+      ...activeStream,
+      chatMessages: [...(activeStream?.chatMessages || []), msg]
+    };
+    broadcastStreamUpdate(updated);
   };
 
   // Upload a new video lecture (persists to MySQL + state)
@@ -127,8 +184,8 @@ export const LiveStreamProvider = ({ children }) => {
       id: `lec-${Date.now()}`,
       title: newLecture.title,
       subject: newLecture.subject || 'General',
-      faculty: newLecture.faculty || 'Faculty',
-      date: new Date().toISOString().split('T')[0],
+      faculty: newLecture.faculty || 'Faculty Member',
+      date: newLecture.date || new Date().toISOString().split('T')[0],
       duration: newLecture.duration || '30 mins',
       videoUrl: newLecture.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4',
       thumbnail: newLecture.thumbnail || 'https://images.unsplash.com/photo-1516116211223-4c59970a9310?auto=format&fit=crop&w=600&q=80',
@@ -137,12 +194,27 @@ export const LiveStreamProvider = ({ children }) => {
     };
 
     try {
-      await lectureAPI.create(lectureObj);
+      const res = await lectureAPI.create(lectureObj);
+      if (res.data?.data) {
+        setLectures(prev => [res.data.data, ...prev.filter(l => l.id !== res.data.data.id)]);
+        return res.data.data;
+      }
     } catch (err) {
       console.warn('Could not persist lecture to backend, saved in memory:', err?.message);
     }
 
     setLectures(prev => [lectureObj, ...prev]);
+    return lectureObj;
+  };
+
+  // Delete lecture
+  const deleteLecture = async (id) => {
+    try {
+      await lectureAPI.delete(id);
+    } catch (err) {
+      console.warn('Could not delete from backend:', err?.message);
+    }
+    setLectures(prev => prev.filter(l => l.id !== id));
   };
 
   return (
@@ -152,7 +224,9 @@ export const LiveStreamProvider = ({ children }) => {
       endLiveStream,
       sendChatMessage,
       lectures,
-      uploadLecture
+      uploadLecture,
+      deleteLecture,
+      refreshLectures
     }}>
       {children}
     </LiveStreamContext.Provider>

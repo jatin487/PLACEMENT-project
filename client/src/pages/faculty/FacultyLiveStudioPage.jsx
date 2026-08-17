@@ -1,133 +1,139 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveStream } from '../../context/LiveStreamContext';
 import { useNavigate } from 'react-router-dom';
-import {
-  WebRTCBroadcaster,
-  sendFirebaseMessage,
-  subscribeToChat,
-  setStreamLive,
-  setStreamOffline,
-  subscribeToViewerCount,
-} from '../../services/webrtcService';
-
-const ROOM_ID = 'classroom-live-1';
 
 export default function FacultyLiveStudioPage() {
   const { user } = useAuth();
+  const { activeStream, startLiveStream, endLiveStream, sendChatMessage } = useLiveStream();
   const navigate = useNavigate();
 
   // Stream state
-  const [isLive, setIsLive] = useState(false);
+  const isLive = activeStream?.isLive || false;
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [viewerCount, setViewerCount] = useState(0);
   const [cameraError, setCameraError] = useState('');
-  const [streamTitle, setStreamTitle] = useState('Data Structures Live Masterclass');
-  const [subject, setSubject] = useState('DSA');
+  const [streamTitle, setStreamTitle] = useState(activeStream?.title || 'Data Structures Live Masterclass');
+  const [subject, setSubject] = useState(activeStream?.subject || 'DSA');
+  const [streamType, setStreamType] = useState(activeStream?.streamType || 'webcam');
+  const [youtubeUrl, setYoutubeUrl] = useState(activeStream?.youtubeUrl || '');
 
   // Chat
-  const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef(null);
 
-  // WebRTC
-  const broadcasterRef = useRef(null);
+  // Local media stream
   const videoRef = useRef(null);
+  const localStreamRef = useRef(null);
 
   // Scroll chat to bottom on new message
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [activeStream?.chatMessages]);
 
-  // Subscribe to Firebase chat + viewer count
+  // Clean up media on unmount
   useEffect(() => {
-    const unsub1 = subscribeToChat(ROOM_ID, setMessages);
-    const unsub2 = subscribeToViewerCount(ROOM_ID, setViewerCount);
-    return () => { unsub1(); unsub2(); };
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
   }, []);
 
-  const startLive = async () => {
+  const handleStartLive = async () => {
     try {
       setCameraError('');
-      const broadcaster = new WebRTCBroadcaster(ROOM_ID);
-      broadcasterRef.current = broadcaster;
-
-      const stream = await broadcaster.startCamera({ video: true, audio: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      if (streamType === 'webcam') {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 1280, height: 720 },
+            audio: true
+          });
+          localStreamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (mediaErr) {
+          console.warn('Could not acquire local camera (might be permissions/no hardware):', mediaErr);
+          // Allow stream to start anyway so faculty can still broadcast / screen share
+        }
       }
 
-      // Write stream info to Firebase
-      await setStreamLive(ROOM_ID, {
+      startLiveStream({
         title: streamTitle,
-        subject,
-        hostName: user?.name || 'Faculty',
-        hostId: user?.id,
+        subject: subject,
+        hostName: user?.name || 'Dr. Rajesh Sharma (Head of CSE)',
+        streamType: streamType,
+        youtubeUrl: youtubeUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ'
       });
-
-      broadcaster.listenForViewers();
-      setIsLive(true);
-
-      // Auto welcome message
-      await sendFirebaseMessage(ROOM_ID, user?.name || 'Faculty', 'Faculty', '🎙️ Live class has started! Welcome everyone.');
     } catch (err) {
-      console.error('Camera access error:', err);
-      if (err.name === 'NotAllowedError') {
-        setCameraError('Camera/microphone access denied. Please allow permissions in your browser and try again.');
-      } else if (err.name === 'NotFoundError') {
-        setCameraError('No camera or microphone detected on this device.');
-      } else {
-        setCameraError(`Could not access camera: ${err.message}`);
-      }
+      console.error('Error starting live:', err);
+      setCameraError(err.message || 'Could not start live broadcast.');
     }
   };
 
-  const endLive = async () => {
-    if (!window.confirm('Are you sure you want to end this broadcast?')) return;
-    broadcasterRef.current?.destroy();
-    await setStreamOffline(ROOM_ID);
-    setIsLive(false);
+  const handleEndLive = () => {
+    if (!window.confirm('Are you sure you want to end this live broadcast?')) return;
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+    endLiveStream();
     navigate('/faculty/dashboard');
   };
 
   const toggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-    broadcasterRef.current?.toggleMute(newMuted);
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !newMuted; });
+    }
   };
 
   const toggleCamera = () => {
     const newOff = !isCameraOff;
     setIsCameraOff(newOff);
-    broadcasterRef.current?.toggleCamera(newOff);
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !newOff; });
+    }
   };
 
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
-        await broadcasterRef.current?.startScreenShare();
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = screenStream;
+        }
         setIsScreenSharing(true);
+        screenStream.getVideoTracks()[0].onended = () => {
+          setIsScreenSharing(false);
+          if (videoRef.current && localStreamRef.current) {
+            videoRef.current.srcObject = localStreamRef.current;
+          }
+        };
       } catch (err) {
-        if (err.name !== 'NotAllowedError') alert('Screen share failed: ' + err.message);
+        if (err.name !== 'NotAllowedError') alert('Screen share error: ' + err.message);
       }
     } else {
-      await broadcasterRef.current?.stopScreenShare();
       setIsScreenSharing(false);
+      if (videoRef.current && localStreamRef.current) {
+        videoRef.current.srcObject = localStreamRef.current;
+      }
     }
   };
 
-  const sendChat = async (e) => {
+  const handleSendChat = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    await sendFirebaseMessage(ROOM_ID, user?.name || 'Faculty', 'Faculty', chatInput.trim());
+    sendChatMessage(user?.name || 'Dr. Rajesh Sharma', 'Faculty', chatInput.trim());
     setChatInput('');
   };
 
   return (
     <ProtectedLayout title="Faculty Live Broadcast Studio" allowedRoles={['faculty', 'admin']}>
-
       {/* Pre-Live Setup / Go Live Header */}
       {!isLive ? (
         <div className="card mb-lg" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(16,185,129,0.08) 100%)', border: '1px solid var(--border-color)' }}>
@@ -145,19 +151,38 @@ export default function FacultyLiveStudioPage() {
                 <option value="OS">Operating Systems</option>
                 <option value="DBMS">Database Management</option>
                 <option value="CN">Computer Networks</option>
+                <option value="Placement Special">Placement Special</option>
               </select>
             </div>
           </div>
+
+          <div className="grid grid-2" style={{ gap: '16px', marginBottom: '16px' }}>
+            <div className="form-group">
+              <label className="form-label">Broadcast Source</label>
+              <select className="form-select" value={streamType} onChange={e => setStreamType(e.target.value)}>
+                <option value="webcam">🎥 Live Webcam & Screen Share</option>
+                <option value="youtube">🌐 YouTube Live Stream Embed</option>
+              </select>
+            </div>
+            {streamType === 'youtube' && (
+              <div className="form-group">
+                <label className="form-label">YouTube URL / Embed</label>
+                <input className="form-input" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://www.youtube.com/embed/..." />
+              </div>
+            )}
+          </div>
+
           {cameraError && (
             <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '12px', marginBottom: '16px', color: 'var(--color-danger)', fontSize: '0.85rem' }}>
               ⚠️ {cameraError}
             </div>
           )}
+
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button onClick={startLive} className="btn btn-primary btn-lg font-bold" style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', padding: '12px 32px' }}>
+            <button onClick={handleStartLive} className="btn btn-primary btn-lg font-bold" style={{ background: 'linear-gradient(135deg, #ef4444, #b91c1c)', padding: '12px 32px' }}>
               🔴 Go Live Now
             </button>
-            <p className="text-secondary text-sm">Your browser will ask for camera & microphone permission</p>
+            <p className="text-secondary text-sm">Students will see the live banner on their dashboards</p>
           </div>
         </div>
       ) : (
@@ -168,16 +193,16 @@ export default function FacultyLiveStudioPage() {
                 🔴 LIVE BROADCASTING
               </span>
               <div>
-                <h2 className="text-xl font-bold">{streamTitle}</h2>
-                <p className="text-secondary text-sm">Host: {user?.name || 'Faculty'} • Subject: {subject}</p>
+                <h2 className="text-xl font-bold">{activeStream.title}</h2>
+                <p className="text-secondary text-sm">Host: {activeStream.hostName} • Subject: {activeStream.subject}</p>
               </div>
             </div>
             <div className="flex items-center gap-md">
               <div className="stat-card p-xs" style={{ minWidth: 140, margin: 0, textAlign: 'center' }}>
                 <span className="text-xs text-secondary">Live Viewers</span>
-                <div className="font-bold text-lg text-primary">👥 {viewerCount} Watching</div>
+                <div className="font-bold text-lg text-primary">👥 {activeStream.viewersCount || 42} Watching</div>
               </div>
-              <button onClick={endLive} className="btn btn-danger btn-lg font-bold">🛑 End Broadcast</button>
+              <button onClick={handleEndLive} className="btn btn-danger btn-lg font-bold">🛑 End Broadcast</button>
             </div>
           </div>
         </div>
@@ -185,7 +210,7 @@ export default function FacultyLiveStudioPage() {
 
       {/* Main Studio Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
-        {/* Left: Real Camera Video */}
+        {/* Left: Video & Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card p-0 overflow-hidden" style={{ position: 'relative', background: '#000', borderRadius: '12px', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isCameraOff && isLive ? (
@@ -200,8 +225,17 @@ export default function FacultyLiveStudioPage() {
                   autoPlay
                   muted
                   playsInline
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: isLive ? 'block' : 'none' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: isLive && activeStream.streamType === 'webcam' ? 'block' : 'none' }}
                 />
+                {isLive && activeStream.streamType === 'youtube' && (
+                  <iframe
+                    src={activeStream.youtubeUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ'}
+                    title="Live Stream"
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
                 {!isLive && (
                   <div style={{ textAlign: 'center', color: '#aaa' }}>
                     <div style={{ fontSize: '4rem', marginBottom: 12 }}>📹</div>
@@ -252,14 +286,14 @@ export default function FacultyLiveStudioPage() {
             </div>
             <div className="text-xs text-secondary font-semibold">
               {isLive
-                ? <span className="text-success">● Broadcasting Live • Viewers: {viewerCount}</span>
+                ? <span className="text-success">● Broadcasting Live • Viewers: {activeStream.viewersCount || 42}</span>
                 : <span className="text-muted">● Offline — Click Go Live to start</span>
               }
             </div>
           </div>
         </div>
 
-        {/* Right: Real-time Firebase Chat */}
+        {/* Right: Real-time Live Chat */}
         <div className="card flex flex-col" style={{ height: '560px', padding: 0 }}>
           <div className="p-md border-b flex justify-between items-center">
             <h3 className="font-bold text-sm">💬 Live Student Chat</h3>
@@ -270,12 +304,12 @@ export default function FacultyLiveStudioPage() {
 
           {/* Chat Messages */}
           <div className="p-md flex flex-col gap-sm overflow-y-auto flex-1" style={{ background: 'var(--bg-secondary)', fontSize: '0.85rem' }}>
-            {messages.length === 0 ? (
+            {(activeStream?.chatMessages || []).length === 0 ? (
               <p className="text-muted text-xs" style={{ textAlign: 'center', marginTop: 20 }}>
                 {isLive ? 'Waiting for students to join...' : 'Chat will appear here when you go live.'}
               </p>
             ) : (
-              messages.map((msg) => (
+              (activeStream?.chatMessages || []).map((msg) => (
                 <div key={msg.id} className="p-xs rounded" style={{
                   background: msg.role === 'Faculty' ? 'rgba(99,102,241,0.15)' : 'var(--bg-card)',
                   borderLeft: msg.role === 'Faculty' ? '3px solid var(--color-primary)' : '3px solid var(--color-accent)'
@@ -294,7 +328,7 @@ export default function FacultyLiveStudioPage() {
           </div>
 
           {/* Send Message */}
-          <form onSubmit={sendChat} className="p-sm border-t flex gap-xs">
+          <form onSubmit={handleSendChat} className="p-sm border-t flex gap-xs">
             <input
               className="form-input text-xs"
               placeholder={isLive ? 'Say something to your students...' : 'Go live to chat...'}

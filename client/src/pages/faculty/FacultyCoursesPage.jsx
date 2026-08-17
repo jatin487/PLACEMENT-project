@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useNavigate } from 'react-router-dom';
+import UploadLectureModal from '../../components/faculty/UploadLectureModal';
 
 export default function FacultyCoursesPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function FacultyCoursesPage() {
   ]);
 
   const [showModal, setShowModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [form, setForm] = useState({ title: '', category: 'Technical', duration: '30 hours', status: 'Active' });
   const [toast, setToast] = useState(null);
@@ -76,14 +78,19 @@ export default function FacultyCoursesPage() {
       )}
 
       {/* Page Header */}
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Manage Courses 📚</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Create, update, and manage your department training modules.</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Manage Courses & Lectures 📚</h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Create, update, and manage your training modules and video lectures.</p>
         </div>
-        <button onClick={handleOpenAdd} style={{ padding: '10px 20px', background: '#2563eb', color: 'white', borderRadius: 8, fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 2px 10px rgba(37,99,235,0.3)' }}>
-          + Create New Course
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowVideoModal(true)} style={{ padding: '10px 18px', background: '#4f46e5', color: 'white', borderRadius: 8, fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 2px 10px rgba(79,70,229,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            📹 Upload Video Lecture
+          </button>
+          <button onClick={handleOpenAdd} style={{ padding: '10px 20px', background: '#2563eb', color: 'white', borderRadius: 8, fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 2px 10px rgba(37,99,235,0.3)' }}>
+            + Create New Course
+          </button>
+        </div>
       </div>
 
       {/* Courses Table */}
@@ -170,6 +177,12 @@ export default function FacultyCoursesPage() {
           </div>
         </div>
       )}
+
+      {/* Upload Video Lecture Modal */}
+      <UploadLectureModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+      />
     </ProtectedLayout>
   );
 }

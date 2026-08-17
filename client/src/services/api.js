@@ -33,6 +33,15 @@ export const lectureAPI = {
   getAll: (params) => API.get('/lectures', { params }),
   getById: (id) => API.get(`/lectures/${id}`),
   create: (data) => API.post('/lectures', data),
+  uploadFile: (formData, onProgress) => API.post('/lectures/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      }
+    }
+  }),
   delete: (id) => API.delete(`/lectures/${id}`),
 };
 
