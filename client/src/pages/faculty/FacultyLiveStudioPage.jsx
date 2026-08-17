@@ -209,7 +209,7 @@ export default function FacultyLiveStudioPage() {
       )}
 
       {/* Main Studio Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+      <div className="live-studio-grid">
         {/* Left: Video & Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card p-0 overflow-hidden" style={{ position: 'relative', background: '#000', borderRadius: '12px', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

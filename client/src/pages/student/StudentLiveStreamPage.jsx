@@ -78,7 +78,7 @@ export default function StudentLiveStreamPage() {
       </div>
 
       {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+      <div className="live-studio-grid">
         {/* Left: Video Player */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card p-0 overflow-hidden" style={{ position: 'relative', background: '#000', borderRadius: '12px', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
