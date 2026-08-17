@@ -141,24 +141,28 @@ export default function UploadLectureModal({ isOpen, onClose }) {
       }, 1200);
 
     } catch (err) {
-      console.error('Upload failed:', err);
-      // Even if network upload has issue, save in client context memory
-      uploadLecture({
-        title: form.title,
-        subject: form.subject,
-        duration: form.duration || '40 mins',
-        videoUrl: videoPreviewUrl || form.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4',
-        thumbnail: thumbnailPreviewUrl || form.thumbnail,
-        description: form.description,
-        tags: form.tags
-      });
+      // IMPORTANT: Do NOT call uploadLecture() here as a fallback and do NOT
+      // set success=true. The lecture was not saved to the database — showing
+      // a success screen would be a false positive and the data would be lost
+      // on the next page refresh.
+      console.error('[LECTURE_UPLOAD_FAIL] Upload failed:', err);
 
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setIsUploading(false);
-        onClose();
-      }, 1200);
+      const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+      const isNetwork = !err?.response && (err?.code === 'ERR_NETWORK' || !err?.code);
+
+      let errorMsg = 'Upload failed — an unexpected error occurred. Please try again.';
+      if (isTimeout) {
+        errorMsg = 'Upload timed out — the server may be starting up (this can take ~60 s on free hosting). Please wait a moment and try again.';
+      } else if (isNetwork) {
+        errorMsg = 'Upload failed — could not reach the server. Check your internet connection and try again.';
+      } else if (err?.response?.data?.error || err?.response?.data?.message) {
+        errorMsg = `Upload failed — ${err.response.data.error || err.response.data.message}`;
+      }
+
+      setUploadError(errorMsg);
+      setIsUploading(false);
+      setUploadProgress(0);
+      // Form data is intentionally preserved so faculty can retry without re-filling.
     }
   };
 
@@ -417,8 +421,35 @@ export default function UploadLectureModal({ isOpen, onClose }) {
             )}
 
             {uploadError && (
-              <div className="p-xs text-xs text-danger font-semibold bg-danger-subtle rounded">
-                ⚠️ {uploadError}
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6
+              }}>
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-danger, #ef4444)' }}>
+                  ⚠️ {uploadError}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    alignSelf: 'flex-start',
+                    fontSize: '0.75rem',
+                    padding: '4px 10px',
+                    background: 'rgba(239,68,68,0.15)',
+                    border: '1px solid rgba(239,68,68,0.4)',
+                    borderRadius: 6,
+                    color: 'var(--color-danger, #ef4444)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => { setUploadError(''); }}
+                >
+                  ✕ Dismiss &amp; Try Again
+                </button>
               </div>
             )}
 

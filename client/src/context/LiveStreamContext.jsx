@@ -123,11 +123,13 @@ export const LiveStreamProvider = ({ children }) => {
   const refreshLectures = async () => {
     try {
       const res = await lectureAPI.getAll();
-      if (res.data?.data && res.data.data.length > 0) {
+      if (res.data?.data) {
         setLectures(res.data.data);
       }
     } catch (err) {
-      console.info('Backend lectures offline, using current state.');
+      // [LECTURE_SYNC_FAIL] Backend unreachable — local state may be stale.
+      // If this fires after an upload, the lecture was NOT confirmed in the DB.
+      console.error('[LECTURE_SYNC_FAIL] Could not fetch lectures from backend:', err?.message || err);
     }
   };
 
@@ -179,6 +181,9 @@ export const LiveStreamProvider = ({ children }) => {
   };
 
   // Upload a new video lecture (persists to MySQL + state)
+  // NOTE: This function throws on any API failure — callers are responsible
+  // for catching and showing an error UI. Do NOT add a local-only fallback here;
+  // a lecture that isn't in the DB will disappear on refresh/re-login.
   const uploadLecture = async (newLecture) => {
     const lectureObj = {
       id: `lec-${Date.now()}`,
@@ -193,18 +198,15 @@ export const LiveStreamProvider = ({ children }) => {
       tags: newLecture.tags ? (Array.isArray(newLecture.tags) ? newLecture.tags : newLecture.tags.split(',').map(t => t.trim())) : ['Lecture']
     };
 
-    try {
-      const res = await lectureAPI.create(lectureObj);
-      if (res.data?.data) {
-        setLectures(prev => [res.data.data, ...prev.filter(l => l.id !== res.data.data.id)]);
-        return res.data.data;
-      }
-    } catch (err) {
-      console.warn('Could not persist lecture to backend, saved in memory:', err?.message);
-    }
+    // Will throw on network/timeout/server error — do not swallow the error here.
+    const res = await lectureAPI.create(lectureObj);
+    const saved = res.data?.data || lectureObj;
 
-    setLectures(prev => [lectureObj, ...prev]);
-    return lectureObj;
+    // Re-fetch from the DB immediately to confirm the lecture is persisted
+    // and so all clients see authoritative data (correct DB id, timestamps, etc.).
+    await refreshLectures();
+
+    return saved;
   };
 
   // Delete lecture

@@ -23,6 +23,33 @@ API.interceptors.response.use(
   }
 );
 
+/**
+ * Retry wrapper for lecture API calls.
+ * Retries once after `delayMs` on network errors or timeouts (ECONNABORTED).
+ * This handles Render free-tier cold starts that can take 30–60 s and
+ * would otherwise exceed the default 30 s axios timeout.
+ *
+ * @param {() => Promise} fn  - Async factory that returns an axios call
+ * @param {number} retries    - Max number of retries (default 1)
+ * @param {number} delayMs    - Delay between retries in ms (default 3000)
+ */
+const withRetry = async (fn, retries = 1, delayMs = 3000) => {
+  try {
+    return await fn();
+  } catch (err) {
+    const isRetryable =
+      !err.response && // network error (no response received)
+      (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK' || err.message?.includes('timeout'));
+
+    if (retries > 0 && isRetryable) {
+      console.warn(`[LECTURE_API] Retryable error (${err.code || err.message}). Retrying in ${delayMs}ms… (${retries} left)`);
+      await new Promise((res) => setTimeout(res, delayMs));
+      return withRetry(fn, retries - 1, delayMs);
+    }
+    throw err;
+  }
+};
+
 export const authAPI = {
   register: (data) => API.post('/auth/register', data),
   login: (data) => API.post('/auth/login', data),
@@ -32,16 +59,20 @@ export const authAPI = {
 export const lectureAPI = {
   getAll: (params) => API.get('/lectures', { params }),
   getById: (id) => API.get(`/lectures/${id}`),
-  create: (data) => API.post('/lectures', data),
-  uploadFile: (formData, onProgress) => API.post('/lectures/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (progressEvent) => {
-      if (onProgress && progressEvent.total) {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress(percentCompleted);
+  // 90 s timeout to tolerate Render cold starts; 1 automatic retry on network/timeout
+  create: (data) => withRetry(() => API.post('/lectures', data, { timeout: 90000 })),
+  uploadFile: (formData, onProgress) => withRetry(() =>
+    API.post('/lectures/upload', formData, {
+      timeout: 90000,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percentCompleted);
+        }
       }
-    }
-  }),
+    })
+  ),
   delete: (id) => API.delete(`/lectures/${id}`),
 };
 
