@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { lectureAPI } from '../services/api';
 
 const LiveStreamContext = createContext(null);
 
@@ -22,7 +23,7 @@ export const LiveStreamProvider = ({ children }) => {
     ],
   });
 
-  // Initial uploaded lectures library
+  // Initial uploaded lectures library (synced with MySQL backend)
   const [lectures, setLectures] = useState([
     {
       id: 'lec-1',
@@ -61,6 +62,21 @@ export const LiveStreamProvider = ({ children }) => {
       tags: ['System Design', 'Placement Prep']
     }
   ]);
+
+  // Fetch lectures from MySQL backend on mount
+  useEffect(() => {
+    const fetchLectures = async () => {
+      try {
+        const res = await lectureAPI.getAll();
+        if (res.data?.data && res.data.data.length > 0) {
+          setLectures(res.data.data);
+        }
+      } catch (err) {
+        console.info('Backend lectures offline, using seeded state.');
+      }
+    };
+    fetchLectures();
+  }, []);
 
   // Start a new live stream
   const startLiveStream = (streamDetails) => {
@@ -105,8 +121,8 @@ export const LiveStreamProvider = ({ children }) => {
     }));
   };
 
-  // Upload a new video lecture
-  const uploadLecture = (newLecture) => {
+  // Upload a new video lecture (persists to MySQL + state)
+  const uploadLecture = async (newLecture) => {
     const lectureObj = {
       id: `lec-${Date.now()}`,
       title: newLecture.title,
@@ -117,8 +133,15 @@ export const LiveStreamProvider = ({ children }) => {
       videoUrl: newLecture.videoUrl || 'https://www.w3schools.com/html/mov_bbb.mp4',
       thumbnail: newLecture.thumbnail || 'https://images.unsplash.com/photo-1516116211223-4c59970a9310?auto=format&fit=crop&w=600&q=80',
       description: newLecture.description || '',
-      tags: newLecture.tags ? newLecture.tags.split(',').map(t => t.trim()) : ['Lecture']
+      tags: newLecture.tags ? (Array.isArray(newLecture.tags) ? newLecture.tags : newLecture.tags.split(',').map(t => t.trim())) : ['Lecture']
     };
+
+    try {
+      await lectureAPI.create(lectureObj);
+    } catch (err) {
+      console.warn('Could not persist lecture to backend, saved in memory:', err?.message);
+    }
+
     setLectures(prev => [lectureObj, ...prev]);
   };
 

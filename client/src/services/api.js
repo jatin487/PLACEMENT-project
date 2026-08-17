@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://placement-portal-sqlite-backend-31gm.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 8000
 });
 
@@ -29,21 +29,37 @@ export const authAPI = {
   getMe: () => API.get('/auth/me'),
 };
 
+export const lectureAPI = {
+  getAll: (params) => API.get('/lectures', { params }),
+  getById: (id) => API.get(`/lectures/${id}`),
+  create: (data) => API.post('/lectures', data),
+  delete: (id) => API.delete(`/lectures/${id}`),
+};
+
 export const courseAPI = {
   getAll: (params) => API.get('/courses', { params }),
   getById: (id) => API.get(`/courses/${id}`),
   create: (data) => API.post('/courses', data),
-  enroll: (id) => API.post(`/courses/${id}/enroll`),
-  updateProgress: (id, progress) => API.put(`/courses/${id}/progress`, { progress }),
+  update: (id, data) => API.put(`/courses/${id}`, data),
+  delete: (id) => API.delete(`/courses/${id}`),
 };
 
 export const quizAPI = {
   getAll: (params) => API.get('/quizzes', { params }),
   getById: (id) => API.get(`/quizzes/${id}`),
   submit: (id, data) => API.post(`/quizzes/${id}/submit`, data),
-  runCode: (data) => API.post('/quizzes/code/run', data),
   create: (data) => API.post('/quizzes', data),
-  getMyResults: () => API.get('/quizzes/results/me'),
+};
+
+export const codingAPI = {
+  getAllProblems: (params) => API.get('/coding/problems', { params }),
+  getProblemById: (id) => API.get(`/coding/problems/${id}`),
+  runCode: (data) => API.post('/coding/run', data),
+};
+
+export const companyAPI = {
+  getAll: (params) => API.get('/companies', { params }),
+  getById: (id) => API.get(`/companies/${id}`),
 };
 
 export const analyticsAPI = {

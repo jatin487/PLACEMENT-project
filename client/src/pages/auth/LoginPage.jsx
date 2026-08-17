@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [selectedRole, setSelectedRole] = useState('student');
@@ -28,18 +28,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const user = await loginWithGoogle();
-      navigate(`/${user.role || 'student'}/dashboard`);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Google sign-in failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const demoLogin = (role) => {
     const demos = {
@@ -135,7 +124,7 @@ export default function LoginPage() {
           'Real-time AI proctoring via webcam',
           'Instant automated scoring & grading',
           'Comprehensive analytics & reports',
-          'Firestore-backed session integrity',
+          'MySQL-backed session integrity',
         ].map((item, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
             <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -199,15 +188,6 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : `Sign In →`}
             </button>
           </form>
-
-          <div style={{ margin: '16px 0', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem', position: 'relative' }}>
-            <span style={{ background: 'white', padding: '0 12px', position: 'relative', zIndex: 1 }}>or</span>
-            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: '#e2e8f0' }} />
-          </div>
-
-          <button className="google-btn-light" onClick={handleGoogleLogin} disabled={loading}>
-            <span style={{ fontSize: '1.1rem' }}>🌐</span> Continue with Google
-          </button>
 
           {/* Demo Access */}
           <div style={{ marginTop: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px' }}>

@@ -3,6 +3,7 @@ const sequelize = require('../config/database');
 const User = require('./User');
 const StudentProfile = require('./StudentProfile');
 const Course = require('./Course');
+const Lecture = require('./Lecture');
 const CodingProblem = require('./CodingProblem');
 const Submission = require('./Submission');
 const Assessment = require('./Assessment');
@@ -13,6 +14,8 @@ const Interview = require('./Interview');
 const Achievement = require('./Achievement');
 const Notification = require('./Notification');
 const Analytics = require('./Analytics');
+const ProctoringSession = require('./ProctoringSession');
+const ProctoringViolation = require('./ProctoringViolation');
 
 // Relationships
 
@@ -56,11 +59,16 @@ Notification.belongsTo(User, { foreignKey: 'userId' });
 User.hasOne(Analytics, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Analytics.belongsTo(User, { foreignKey: 'userId' });
 
+// ProctoringSession <-> ProctoringViolation (1:M)
+ProctoringSession.hasMany(ProctoringViolation, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+ProctoringViolation.belongsTo(ProctoringSession, { foreignKey: 'sessionId' });
+
 module.exports = {
   sequelize,
   User,
   StudentProfile,
   Course,
+  Lecture,
   CodingProblem,
   Submission,
   Assessment,
@@ -70,5 +78,7 @@ module.exports = {
   Interview,
   Achievement,
   Notification,
-  Analytics
+  Analytics,
+  ProctoringSession,
+  ProctoringViolation,
 };

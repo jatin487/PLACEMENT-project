@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { firebaseAuthMiddleware } = require('../middleware/firebaseAuth');
+const authMiddleware = require('../middleware/authMiddleware');
 const {
   startSession,
   reportViolation,
@@ -10,8 +10,8 @@ const {
   getActiveSession,
 } = require('../controllers/proctoringController');
 
-// All proctoring routes require a valid Firebase ID token
-router.use(firebaseAuthMiddleware);
+// All proctoring routes require a valid JWT token
+router.use(authMiddleware);
 
 // ── Session lifecycle ─────────────────────────────────────────────────────────
 
@@ -21,11 +21,11 @@ router.post('/session/start', startSession);
 /** Submit a completed session */
 router.post('/session/submit', submitSession);
 
-/** Get a specific session by ID */
-router.get('/session/:sessionId', getSession);
-
 /** Check for an existing active/cancelled session for an assessment */
 router.get('/session/active/:assessmentId', getActiveSession);
+
+/** Get a specific session by ID */
+router.get('/session/:sessionId', getSession);
 
 // ── Violation reporting ───────────────────────────────────────────────────────
 

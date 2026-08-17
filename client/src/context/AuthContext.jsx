@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
-import { auth, googleProvider } from '../firebase/config';
-import { signInWithPopup } from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -13,15 +11,15 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('pp_token');
       const savedUser = localStorage.getItem('pp_user');
-      
+
       if (token && savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
           setLoading(false);
 
-          // Skip backend JWT verification for non-JWT fallback tokens
-          if (token.startsWith('token_') || token.startsWith('mock') || token === 'mock-google-token') {
+          // Skip backend JWT verification for demo fallback tokens
+          if (token.startsWith('token_') || token.startsWith('mock')) {
             return;
           }
 
@@ -39,7 +37,6 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         setUser(null);
       }
-
     };
 
     initializeAuth();
@@ -49,7 +46,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authAPI.login({ email, password });
       const { token, user: userData } = res.data;
-      
+
       localStorage.setItem('pp_token', token);
       localStorage.setItem('pp_user', JSON.stringify(userData));
       setUser(userData);
@@ -78,52 +75,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
-      const idToken = await firebaseUser.getIdToken();
-      const userData = { 
-        id: firebaseUser.uid, 
-        name: firebaseUser.displayName || 'Google User', 
-        email: firebaseUser.email, 
-        role: 'student', 
-        department: 'CSE', 
-        batch: '2025',
-        skillPoints: 50,
-        streak: 1,
-        avatar: firebaseUser.photoURL
-      };
-      localStorage.setItem('pp_token', idToken);
-      localStorage.setItem('pp_user', JSON.stringify(userData));
-      setUser(userData);
-      return userData;
-    } catch (firebaseErr) {
-      console.warn('Firebase Sign-In failed or popup blocked. Using demo fallback:', firebaseErr?.message);
-      const mockUser = { 
-        id: 'google-user-id', 
-        name: 'Google User', 
-        email: 'google@gmail.com', 
-        role: 'student', 
-        department: 'CSE', 
-        batch: '2025',
-        skillPoints: 50,
-        streak: 1
-      };
-      localStorage.setItem('pp_token', 'mock-google-token');
-      localStorage.setItem('pp_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      return mockUser;
-    }
-  };
-
   const register = async (data) => {
     const { name, email, password, role = 'student', department, batch } = data;
-    
+
     try {
       const res = await authAPI.register({ name, email, password, role, department, batch });
       const { token, user: userData } = res.data;
-      
+
       localStorage.setItem('pp_token', token);
       localStorage.setItem('pp_user', JSON.stringify(userData));
       setUser(userData);
@@ -160,7 +118,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

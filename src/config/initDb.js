@@ -1,5 +1,5 @@
 async function initializeDatabase() {
-  console.log('Using SQLite database: database.sqlite (Auto-created)');
+  console.log('Using MySQL database:', process.env.DB_NAME || 'placement_db');
   return Promise.resolve();
 }
 

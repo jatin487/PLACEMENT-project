@@ -1,9 +1,7 @@
 /**
  * Proctoring Service — client-side API calls with local fallback for demo/offline mode.
+ * Session state is now fully MySQL-backed via the backend REST API.
  */
-
-import { db } from '../firebase/config';
-import { doc, onSnapshot } from 'firebase/firestore';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -106,27 +104,31 @@ export async function reportViolation({ sessionId, type, severity = 'medium', me
   }
 }
 
-export function subscribeToSession(sessionId, onUpdate, onError) {
-  if (!sessionId || sessionId.startsWith('demo_session_')) {
+/**
+ * Subscribe to session updates via polling.
+ * (Replaces the previous Firestore onSnapshot real-time listener.)
+ * Returns an unsubscribe function.
+ */
+export function subscribeToSession(sessionId, onUpdate, onError, intervalMs = 5000) {
+  if (!sessionId || String(sessionId).startsWith('demo_session_')) {
     return () => {};
   }
 
-  if (!db) {
+  const token = localStorage.getItem('pp_token');
+  if (!token || token.startsWith('mock_demo_token') || token.startsWith('token_')) {
     return () => {};
   }
 
-  try {
-    const sessionRef = doc(db, 'assessmentSessions', sessionId);
-    return onSnapshot(
-      sessionRef,
-      (snap) => {
-        if (snap.exists()) {
-          onUpdate({ id: snap.id, ...snap.data() });
-        }
-      },
-      (err) => onError?.(err)
-    );
-  } catch (err) {
-    return () => {};
-  }
+  const poll = async () => {
+    try {
+      const data = await apiCall('GET', `/proctoring/session/${sessionId}`);
+      if (data.session) onUpdate(data.session);
+    } catch (err) {
+      onError?.(err);
+    }
+  };
+
+  poll(); // immediate first fetch
+  const handle = setInterval(poll, intervalMs);
+  return () => clearInterval(handle);
 }
