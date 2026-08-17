@@ -1,18 +1,21 @@
 {
   "name": "mysql-with-placement",
   "version": "1.0.0",
-  "description": "",
+  "description": "Placement Portal Fullstack Application",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "server": "node src/index.js",
+    "build": "cd client && npm install && npm run build",
+    "client": "cd client && npm run dev",
+    "test": "echo \"No test specified\" && exit 0"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "engines": {
-    "node": "20.x"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
