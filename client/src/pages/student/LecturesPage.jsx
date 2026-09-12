@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useLiveStream } from '../../context/LiveStreamContext';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../firebase/config';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 /* ─── Firestore helpers (with localStorage fallback) ─────────── */

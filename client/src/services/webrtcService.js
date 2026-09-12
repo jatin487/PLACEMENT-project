@@ -2,7 +2,6 @@
  * WebRTC + Firebase Realtime DB Signaling Service
  * Real P2P live streaming: Faculty (broadcaster) → Students (viewers)
  */
-import { realtimeDb } from '../firebase/config';
 import { ref, set, onValue, onChildAdded, push, remove, off, get } from 'firebase/database';
 
 // ICE servers: STUN (free) + TURN relay (for cross-network/production)

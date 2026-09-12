@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../firebase/config';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
 
 // Language configs for Piston API (free, no API key needed)

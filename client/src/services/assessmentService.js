@@ -1,4 +1,3 @@
-import { db } from '../firebase/config';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import API from './api';
 
