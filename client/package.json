@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "axios": "^1.18.1",
+    "axios": "^1.20.0",
     "firebase": "^12.17.1",
     "lucide-react": "^1.30.0",
     "react": "^19.2.7",
