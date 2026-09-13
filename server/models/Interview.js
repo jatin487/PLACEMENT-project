@@ -1,34 +1,29 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const Interview = sequelize.define('Interview', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
+const interviewSchema = new mongoose.Schema(
+  {
+    applicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Application',
+      required: true,
+    },
+    round: {
+      type: Number,
+      required: true,
+    },
+    feedback: {
+      type: String,
+      default: null,
+    },
+    result: {
+      type: String,
+      enum: ['pending', 'passed', 'failed'],
+      default: 'pending',
+    },
   },
-  applicationId: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references: {
-      model: 'Applications',
-      key: 'id'
-    }
-  },
-  round: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  feedback: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  result: {
-    type: DataTypes.ENUM('pending', 'passed', 'failed'),
-    defaultValue: 'pending',
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true,
-});
+);
 
-module.exports = Interview;
+module.exports = mongoose.model('Interview', interviewSchema);
