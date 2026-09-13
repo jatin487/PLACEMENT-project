@@ -6,6 +6,8 @@ const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role, email: user.email },
     process.env.JWT_SECRET,
+    { id: user.id || user._id, role: user.role, email: user.email },
+    process.env.JWT_SECRET || 'your_jwt_secret_key',
     { expiresIn: '1d' }
   );
 };
@@ -40,6 +42,7 @@ exports.register = async (req, res) => {
       token,
       user: {
         id: user._id,
+        id: user.id || user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -89,6 +92,7 @@ exports.login = async (req, res) => {
       token,
       user: {
         id: user._id,
+        id: user.id || user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -113,6 +117,7 @@ exports.getMe = async (req, res) => {
       success: true,
       user: {
         id: user._id,
+        id: user.id || user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -123,6 +128,16 @@ exports.getMe = async (req, res) => {
         lastActive: user.lastActive
       }
     });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}, '-password');
+    res.json({ success: true, count: users.length, users });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
