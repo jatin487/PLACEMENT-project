@@ -1,34 +1,28 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const Analytics = sequelize.define('Analytics', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
+const AnalyticsSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    progress: {
+      type: Number, // e.g., percentage completion of courses
+      default: 0,
+    },
+    learningGraph: {
+      type: mongoose.Schema.Types.Mixed, // Activity timeline
+      default: null,
+    },
+    placementReadiness: {
+      type: Number, // Score out of 100 based on various metrics
+      default: 0,
+    },
   },
-  userId: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    references: {
-      model: 'Users',
-      key: 'id'
-    }
-  },
-  progress: {
-    type: DataTypes.FLOAT, // e.g., percentage completion of courses
-    defaultValue: 0,
-  },
-  learningGraph: {
-    type: DataTypes.JSON, // Activity timeline
-    allowNull: true,
-  },
-  placementReadiness: {
-    type: DataTypes.FLOAT, // Score out of 100 based on various metrics
-    defaultValue: 0,
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true,
-});
+);
 
-module.exports = Analytics;
+module.exports = mongoose.model('Analytics', AnalyticsSchema);
