@@ -1,30 +1,25 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const Assessment = sequelize.define('Assessment', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
+const assessmentSchema = new mongoose.Schema({
   title: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   type: {
-    type: DataTypes.ENUM('mcq', 'coding', 'mock'),
-    allowNull: false,
+    type: String,
+    enum: ['mcq', 'coding', 'mock'],
+    required: true,
   },
   questions: {
-    type: DataTypes.JSON, // Array of questions or question IDs
-    allowNull: false,
+    type: mongoose.Schema.Types.Mixed, // Array of questions or question IDs
+    required: true,
   },
   totalScore: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
+    type: Number,
+    required: true,
   }
 }, {
   timestamps: true,
 });
 
-module.exports = Assessment;
+module.exports = mongoose.model('Assessment', assessmentSchema);

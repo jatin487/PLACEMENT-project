@@ -1,34 +1,35 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const CodingProblem = sequelize.define('CodingProblem', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
+const codingProblemSchema = new mongoose.Schema({
   title: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   statement: {
-    type: DataTypes.TEXT,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   difficulty: {
-    type: DataTypes.ENUM('easy', 'medium', 'hard'),
-    allowNull: false,
+    type: String,
+    enum: ['easy', 'medium', 'hard'],
+    required: true,
   },
   tags: {
-    type: DataTypes.JSON, // Array of strings
-    allowNull: true,
+    type: [String], // Array of strings
+    required: false,
   },
   testCases: {
-    type: DataTypes.JSON, // Array of { input: string, output: string }
-    allowNull: false,
+    type: [
+      {
+        input: { type: String, required: true },
+        output: { type: String, required: true },
+        _id: false,
+      }
+    ],
+    required: true,
   }
 }, {
   timestamps: true,
 });
 
-module.exports = CodingProblem;
+module.exports = mongoose.model('CodingProblem', codingProblemSchema);
