@@ -9,7 +9,10 @@ const app = express();
 connectDB();
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'https://placementttttt-2.vercel.app'
+  ],
   credentials: true
 }));
 app.use(express.json());
