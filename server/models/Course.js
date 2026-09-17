@@ -1,38 +1,34 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const Course = sequelize.define('Course', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
+const ModuleSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  order: { type: Number },
+}, { _id: false });
+
+const VideoSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  title: { type: String },
+  duration: { type: Number }, // seconds
+}, { _id: false });
+
+const CourseSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      default: null,
+    },
+    modules: [ModuleSchema],
+    videos: [VideoSchema],
+    notes: [String],     // Array of URLs
+    quizzes: [String],   // Array of quiz IDs
   },
-  title: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  modules: {
-    type: DataTypes.JSON, // Array of objects
-    allowNull: true,
-  },
-  videos: {
-    type: DataTypes.JSON, // Array of URLs/Metadata
-    allowNull: true,
-  },
-  notes: {
-    type: DataTypes.JSON, // Array of URLs
-    allowNull: true,
-  },
-  quizzes: {
-    type: DataTypes.JSON, // Array of quiz IDs or metadata
-    allowNull: true,
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true,
-});
+);
 
-module.exports = Course;
+module.exports = mongoose.model('Course', CourseSchema);

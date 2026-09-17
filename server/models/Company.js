@@ -1,30 +1,27 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const mongoose = require('mongoose');
 
-const Company = sequelize.define('Company', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
+const CompanySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    profile: {
+      type: String,
+      default: null,
+    },
+    eligibility: {
+      type: String,
+      default: null,
+    },
+    jobRoles: {
+      type: mongoose.Schema.Types.Mixed, // Array of roles
+      default: null,
+    },
   },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  profile: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  eligibility: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  jobRoles: {
-    type: DataTypes.JSON, // Array of roles
-    allowNull: true,
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true,
-});
+);
 
-module.exports = Company;
+module.exports = mongoose.model('Company', CompanySchema);

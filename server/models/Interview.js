@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const interviewSchema = new mongoose.Schema(
   {
-    applicationId: {
+    companyId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Application',
+      ref: "Company",
       required: true,
     },
     round: {
@@ -17,13 +17,13 @@ const interviewSchema = new mongoose.Schema(
     },
     result: {
       type: String,
-      enum: ['pending', 'passed', 'failed'],
-      default: 'pending',
+      enum: ["pending", "passed", "failed"],
+      default: "pending",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model('Interview', interviewSchema);
+module.exports = mongoose.model("Interview", interviewSchema);

@@ -1,15 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const StudentProfileSchema = new mongoose.Schema(
   {
-    id: {
-      type: String,
-      default: () => new mongoose.Types.ObjectId().toString(),
-      unique: true,
-    },
-
     userId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
 
@@ -40,13 +35,13 @@ const StudentProfileSchema = new mongoose.Schema(
 
     placementStatus: {
       type: String,
-      enum: ['unplaced', 'placed', 'not_interested'],
-      default: 'unplaced',
+      enum: ["unplaced", "placed", "not_interested"],
+      default: "unplaced",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model('StudentProfile', StudentProfileSchema);
+module.exports = mongoose.model("StudentProfile", StudentProfileSchema);

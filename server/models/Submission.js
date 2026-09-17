@@ -1,20 +1,16 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const SubmissionSchema = new mongoose.Schema(
   {
-    id: {
-      type: String,
-      default: () => new mongoose.Types.ObjectId().toString(),
-      unique: true,
-    },
-
     studentId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
 
     problemId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CodingProblem",
       required: true,
     },
 
@@ -26,17 +22,17 @@ const SubmissionSchema = new mongoose.Schema(
     language: {
       type: String,
       required: true,
-      default: 'cpp',
+      default: "cpp",
     },
 
     verdict: {
       type: String,
       enum: [
-        'Accepted',
-        'Wrong Answer',
-        'Time Limit Exceeded',
-        'Compilation Error',
-        'Runtime Error',
+        "Accepted",
+        "Wrong Answer",
+        "Time Limit Exceeded",
+        "Compilation Error",
+        "Runtime Error",
       ],
       required: true,
     },
@@ -53,7 +49,7 @@ const SubmissionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-module.exports = mongoose.model('Submission', SubmissionSchema);
+module.exports = mongoose.model("Submission", SubmissionSchema);
