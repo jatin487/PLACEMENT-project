@@ -1,5 +1,3 @@
-// controllers/analyticsController.js
-
 const User = require("../models/User");
 const Analytics = require("../models/Analytics");
 const Submission = require("../models/Submission");
@@ -23,12 +21,12 @@ exports.getMyAnalytics = async (req, res) => {
     const analyticsModel = Analytics;
 
     const [testsCompleted, badgesEarned, recentActivity] = await Promise.all([
-      Submission.countDocuments({ user: userId }),
-      Achievement.countDocuments({ user: userId }),
+      Submission.countDocuments({ studentId: userId }),
+      Achievement.countDocuments({ userId: userId }),
       Submission.find({ user: userId })
         .sort({ createdAt: -1 })
         .limit(4)
-        .populate("assessment", "title"),
+        .select('verdict language createdAt score')
     ]);
 
     // Get submissions from the last 7 days.
