@@ -48,51 +48,10 @@ const activityData = [
   { day: "Sun", score: 79 },
 ];
 
-const recentActivity = analyticsData?.recentActivity ?? [];
-
-const stats = [
-  {
-    icon: BookOpen,
-    value: analyticsData?.stats?.coursesEnrolled ?? "—",
-    label: "Courses Enrolled",
-    change: "+2 this week",
-    accent: "#2563eb",
-    bg: "rgba(37,99,235,0.08)",
-  },
-  {
-    icon: FileText,
-    value: analyticsData?.stats?.testsCompleted ?? "—",
-    label: "Tests Completed",
-    change: "+5 this week",
-    accent: "#0ea5e9",
-    bg: "rgba(14,165,233,0.08)",
-  },
-  {
-    icon: Zap,
-    value: analyticsData?.stats?.skillPoints ?? "—",
-    label: "Skill Points",
-    change: "+150 today",
-    accent: "#d97706",
-    bg: "rgba(217,119,6,0.08)",
-  },
-  {
-    icon: Award,
-    value: analyticsData?.stats?.badgesEarned ?? "—",
-    label: "Badges Earned",
-    change: "1 new badge",
-    accent: "#7c3aed",
-    bg: "rgba(124,58,237,0.08)",
-  },
-];
-
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { activeStream } = useLiveStream();
   const navigate = useNavigate();
-
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const [analyticsData, setAnalyticsData] = useState(null);
 
   useEffect(() => {
@@ -101,6 +60,48 @@ export default function StudentDashboard() {
       .then((res) => setAnalyticsData(res.data.data))
       .catch((err) => console.error(err));
   }, []);
+
+  const stats = [
+    {
+      icon: BookOpen,
+      value: analyticsData?.stats?.coursesEnrolled ?? "—",
+      label: "Courses Enrolled",
+      change: "+2 this week",
+      accent: "#2563eb",
+      bg: "rgba(37,99,235,0.08)",
+    },
+    {
+      icon: FileText,
+      value: analyticsData?.stats?.testsCompleted ?? "—",
+      label: "Tests Completed",
+      change: "+5 this week",
+      accent: "#0ea5e9",
+      bg: "rgba(14,165,233,0.08)",
+    },
+    {
+      icon: Zap,
+      value: analyticsData?.stats?.skillPoints ?? "—",
+      label: "Skill Points",
+      change: "+150 today",
+      accent: "#d97706",
+      bg: "rgba(217,119,6,0.08)",
+    },
+    {
+      icon: Award,
+      value: analyticsData?.stats?.badgesEarned ?? "—",
+      label: "Badges Earned",
+      change: "1 new badge",
+      accent: "#7c3aed",
+      bg: "rgba(124,58,237,0.08)",
+    },
+  ];
+
+  const recentActivity = analyticsData?.recentActivity ?? [];
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <ProtectedLayout
       title="Dashboard"
