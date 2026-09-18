@@ -23,10 +23,10 @@ exports.getMyAnalytics = async (req, res) => {
     const [testsCompleted, badgesEarned, recentActivity] = await Promise.all([
       Submission.countDocuments({ studentId: userId }),
       Achievement.countDocuments({ userId: userId }),
-      Submission.find({ user: userId })
+      Submission.find({ studentId: userId })
         .sort({ createdAt: -1 })
         .limit(4)
-        .select('verdict language createdAt score')
+        .select("verdict language createdAt score"),
     ]);
 
     // Get submissions from the last 7 days.
