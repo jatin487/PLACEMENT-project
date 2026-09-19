@@ -1,4 +1,6 @@
 require('dotenv').config();
+
+
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -9,6 +11,8 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const achievementRoutes = require('./routes/achievement');
 const notificationRoutes = require('./routes/notification');
 const studentProfileRoutes = require('./routes/studentProfile');
+const codingProblemRoutes = require('./routes/codingProblem');
+const submissionRoutes = require('./routes/submission');
 
 const app = express();
 
@@ -34,6 +38,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/student-profile', studentProfileRoutes);
 app.use('/api/studentProfile', studentProfileRoutes);
+app.use('/api/problems', codingProblemRoutes);
+app.use('/api/submissions', submissionRoutes);
 
 // Root Endpoint
 app.get('/', (req, res) => {
@@ -51,4 +57,4 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
+});
