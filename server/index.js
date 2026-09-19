@@ -7,6 +7,8 @@ const analyticsRoutes = require('./routes/analytics');
 const assessmentRoutes = require('./routes/assessment');
 const leaderboardRoutes = require('./routes/leaderboard');
 const achievementRoutes = require('./routes/achievement');
+const notificationRoutes = require('./routes/notification');
+const studentProfileRoutes = require('./routes/studentProfile');
 
 const app = express();
 
@@ -28,6 +30,10 @@ app.use('/api/assessments', assessmentRoutes);
 app.use('/api/courses', require('./routes/course'));
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/achievements', achievementRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/notification', notificationRoutes);
+app.use('/api/student-profile', studentProfileRoutes);
+app.use('/api/studentProfile', studentProfileRoutes);
 
 // Root Endpoint
 app.get('/', (req, res) => {
