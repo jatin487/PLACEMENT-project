@@ -22,6 +22,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/assessments', assessmentRoutes);
+app.use('/api/courses', require('./routes/course'));
 
 app.get('/', (req, res) => {
   res.json({
