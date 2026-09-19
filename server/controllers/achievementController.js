@@ -42,8 +42,7 @@ const achievementSchema = new mongoose.Schema(
 // Prevent awarding the exact same badge twice to the same user
 achievementSchema.index({ userId: 1, title: 1 }, { unique: true });
 
-const Achievement =
-  mongoose.models.Achievement || mongoose.model('Achievement', achievementSchema);
+const Achievement = require('../models/Achievement');
 
 // ── Available Badges Catalogue ────────────────────────────────────────────────
 const ALL_BADGES = [
