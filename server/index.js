@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const analyticsRoutes = require('./routes/analytics');
+const assessmentRoutes = require('./routes/assessment');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/assessments', assessmentRoutes);
 
 app.get('/', (req, res) => {
   res.json({
