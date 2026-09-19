@@ -57,7 +57,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     analyticsAPI
       .getMyAnalytics()
-      .then((res) => setAnalyticsData(res.data.data))
+      .then((res) => setAnalyticsData(res.data))
       .catch((err) => console.error(err));
   }, []);
 
