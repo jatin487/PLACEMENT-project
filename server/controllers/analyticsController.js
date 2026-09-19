@@ -35,7 +35,7 @@ exports.getMyAnalytics = async (req, res) => {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const weeklySubmissions = await Submission.find({
-      user: userId,
+      studentId: userId,
       createdAt: { $gte: sevenDaysAgo },
     }).select("score createdAt");
 
