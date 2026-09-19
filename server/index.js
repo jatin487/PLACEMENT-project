@@ -38,6 +38,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/student-profile', studentProfileRoutes);
 app.use('/api/problems', codingProblemRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/lectures', require('./routes/lecture'));
 
 // Root Endpoint
 app.get('/', (req, res) => {

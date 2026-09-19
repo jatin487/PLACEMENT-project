@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useLiveStream } from '../../context/LiveStreamContext';
 import { useAuth } from '../../context/AuthContext';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import API from '../../services/api';
 
 /* ─── Firestore helpers (with localStorage fallback) ─────────── */
 function progressKey(userId, videoId) {
@@ -10,34 +10,24 @@ function progressKey(userId, videoId) {
 }
 
 async function loadProgress(userId, videoId) {
-  // Try Firestore first
-  try {
-    if (db && userId) {
-      const ref = doc(db, 'videoProgress', userId, 'videos', videoId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) return snap.data();
-    }
-  } catch {/* fall through */}
-  // Fallback: localStorage
   try {
     const raw = localStorage.getItem(progressKey(userId || 'guest', videoId));
     if (raw) return JSON.parse(raw);
-  } catch {/* ignore */}
+  } catch { }
   return null;
 }
 
 async function saveProgress(userId, videoId, data) {
-  // Save to localStorage immediately (always works)
   try {
     localStorage.setItem(progressKey(userId || 'guest', videoId), JSON.stringify(data));
-  } catch {/* ignore */}
-  // Also try Firestore
+  } catch { }
+  // Save to backend
   try {
-    if (db && userId) {
-      const ref = doc(db, 'videoProgress', userId, 'videos', videoId);
-      await setDoc(ref, data, { merge: true });
-    }
-  } catch {/* silent — localStorage already saved */}
+    await API.put(`/lectures/${videoId}/progress`, {
+      watchedSeconds: data.currentTime || 0,
+      totalSeconds: 0
+    });
+  } catch { }
 }
 
 /* ─── Progress Bar Component ─────────────────────────────────── */
