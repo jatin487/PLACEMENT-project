@@ -35,9 +35,7 @@ app.use('/api/courses', require('./routes/course'));
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/notification', notificationRoutes);
 app.use('/api/student-profile', studentProfileRoutes);
-app.use('/api/studentProfile', studentProfileRoutes);
 app.use('/api/problems', codingProblemRoutes);
 app.use('/api/submissions', submissionRoutes);
 
