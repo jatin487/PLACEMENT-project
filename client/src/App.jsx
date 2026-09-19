@@ -11,7 +11,6 @@ import LeaderboardPage from './pages/student/LeaderboardPage';
 import BadgesPage from './pages/student/BadgesPage';
 import StudentLiveStreamPage from './pages/student/StudentLiveStreamPage';
 import LecturesPage from './pages/student/LecturesPage';
-import NPTELTestPage from './pages/student/NPTELTestPage';
 
 import FacultyDashboard from './pages/faculty/FacultyDashboard';
 import FacultyCoursesPage from './pages/faculty/FacultyCoursesPage';
@@ -56,7 +55,6 @@ function App() {
           <Route path="/student/badges" element={<BadgesPage />} />
           <Route path="/student/live/:streamId" element={<StudentLiveStreamPage />} />
           <Route path="/student/lectures" element={<LecturesPage />} />
-          <Route path="/student/nptel-tests" element={<NPTELTestPage />} />
 
           {/* Faculty Routes */}
           <Route path="/faculty/dashboard" element={<FacultyDashboard />} />

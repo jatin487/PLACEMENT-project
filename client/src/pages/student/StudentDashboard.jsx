@@ -205,13 +205,6 @@ export default function StudentDashboard() {
           >
             <Radio size={13} /> Lectures
           </button>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => navigate("/student/nptel-tests")}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <FileText size={13} /> NPTEL Tests
-          </button>
         </div>
       </div>
 

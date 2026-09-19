@@ -10,7 +10,6 @@ const studentNav = [
   { label: 'Dashboard',      icon: LayoutDashboard, path: '/student/dashboard' },
   { label: 'Live Classroom', icon: Radio,           path: '/student/live/stream-dsa-live' },
   { label: 'Video Lectures', icon: PlayCircle,      path: '/student/lectures' },
-  { label: 'NPTEL Tests',    icon: FileText,        path: '/student/nptel-tests' },
   { label: 'My Courses',     icon: BookOpen,        path: '/student/courses' },
   { label: 'Assessments',    icon: ClipboardList,   path: '/student/assessments' },
   { label: 'Code Editor',    icon: Code2,           path: '/student/code' },
