@@ -260,3 +260,14 @@ exports.getAttemptResult = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch assessment result', error: error.message });
   }
 };
+
+exports.createAssessment = async (req, res) => {
+  try {
+    const { title, type, questions, totalScore } = req.body;
+    const assessment = new Assessment({ title, type, questions, totalScore });
+    await assessment.save();
+    res.status(201).json({ success: true, assessment });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
