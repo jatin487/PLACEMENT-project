@@ -5,6 +5,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const analyticsRoutes = require('./routes/analytics');
 const assessmentRoutes = require('./routes/assessment');
+const leaderboardRoutes = require('./routes/leaderboard');
+const achievementRoutes = require('./routes/achievement');
 
 const app = express();
 
@@ -19,11 +21,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/courses', require('./routes/course'));
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/achievements', achievementRoutes);
 
+// Root Endpoint
 app.get('/', (req, res) => {
   res.json({
     app: 'AssessHub API',
@@ -39,4 +45,4 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
+});
