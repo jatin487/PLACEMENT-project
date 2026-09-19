@@ -139,7 +139,7 @@ exports.submitAssessment = async (req, res) => {
   try {
     const assessmentId = req.params.id;
     const userId = req.user?.id || req.body.userId;
-    const submittedAnswers = req.body.answers ?? req.body;
+    const submittedAnswers = req.body.answers || {};
 
     const assessment = await Assessment.findById(assessmentId);
     if (!assessment) {
