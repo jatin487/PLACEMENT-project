@@ -1,44 +1,51 @@
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API from '../../services/api';
 
 export default function CreateQuizPage() {
   const [title, setTitle] = useState('');
   const navigate = useNavigate();
 
-  const handleSave = () => {
-    alert('Quiz saved successfully! (Demo)');
-    navigate('/faculty/dashboard');
+  const handleSave = async () => {
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
+      alert('Quiz title is required');
+      return;
+    }
+
+    try {
+      const payload = {
+        title: trimmedTitle,
+        type: 'mcq',
+        questions: [],
+        totalScore: 100,
+      };
+
+      await API.post('/assessments', payload);
+      alert('Quiz saved successfully!');
+      navigate('/faculty/dashboard');
+    } catch (error) {
+      console.error('Error saving quiz:', error);
+      alert(error.response?.data?.message || error.response?.data?.error || 'Failed to save quiz');
+    }
   };
 
   return (
     <ProtectedLayout title="Create Quiz" allowedRoles={['faculty']}>
       <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
         <h2 className="font-bold text-lg mb-lg">New Assessment</h2>
-        
+
         <div className="form-group">
           <label className="form-label">Quiz Title</label>
-          <input 
-            type="text" 
-            className="form-input" 
+          <input
+            type="text"
+            className="form-input"
             placeholder="e.g. Midterm JavaScript Assessment"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(event) => setTitle(event.target.value)}
           />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Duration (Minutes)</label>
-          <input type="number" className="form-input" defaultValue={30} />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Course Category</label>
-          <select className="form-select">
-            <option>Data Structures</option>
-            <option>Web Development</option>
-            <option>Database Systems</option>
-          </select>
         </div>
 
         <div className="flex justify-end gap-md mt-xl">

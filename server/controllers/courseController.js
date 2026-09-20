@@ -74,6 +74,19 @@ exports.createCourse = async (req, res) => {
   }
 };
 
+// DELETE /api/courses/:id
+exports.deleteCourse = async (req, res) => {
+  try {
+    const deletedCourse = await Course.findByIdAndDelete(req.params.id);
+    if (!deletedCourse) {
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    res.json({ success: true, message: 'Course deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // POST /api/courses/:id/enroll
 exports.enrollCourse = async (req, res) => {
   try {
