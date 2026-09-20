@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import API, { authAPI } from '../services/api';
+import API, { authAPI } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       if (token && savedUser) {
         try {
           setUser(JSON.parse(savedUser));
-          const res = await API.get('/auth/me');
+          const res = await API.get("/auth/me");
           if (res.data?.user) {
             setUser(res.data.user);
             localStorage.setItem("pp_user", JSON.stringify(res.data.user));
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async ({ email, password }) => {
+  const login = async ({ email, password, role }) => {
     const res = await authAPI.login({ email, password, role });
     const { token, user: userData } = res.data;
     localStorage.setItem("pp_token", token);
