@@ -12,16 +12,19 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-API.interceptors.response.use(
+api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
-      localStorage.removeItem("pp_token");
-      localStorage.removeItem("pp_user");
-      window.location.href = "/login";
+      // Sirf tab redirect karo jab already login page pe nahi hain
+      if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('pp_token');
+        localStorage.removeItem('pp_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
-  },
+  }
 );
 
 export const authAPI = {
