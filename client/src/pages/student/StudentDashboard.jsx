@@ -2,7 +2,6 @@ import ProtectedLayout from "../../components/layout/ProtectedLayout";
 import { useAuth } from "../../context/AuthContext";
 import { useLiveStream } from "../../context/LiveStreamContext";
 import { useNavigate } from "react-router-dom";
-import { MODULES, SAMPLE_BADGES } from "../../data/seedData";
 import {
   TrendingUp,
   BookOpen,
@@ -53,12 +52,12 @@ export default function StudentDashboard() {
   const { activeStream } = useLiveStream();
   const navigate = useNavigate();
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
 
   useEffect(() => {
-    analyticsAPI
-      .getMyAnalytics()
-      .then((res) => setAnalyticsData(res.data))
-      .catch((err) => console.error(err));
+    API.get("/courses/enrolled")
+      .then((res) => setEnrolledCourses(res.data.courses || []))
+      .catch(() => {});
   }, []);
 
   const stats = [
@@ -329,9 +328,9 @@ export default function StudentDashboard() {
             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {(MODULES || []).slice(0, 3).map((m) => (
+            {enrolledCourses.slice(0, 3).map((course) => (
               <div
-                key={m.id}
+                key={course._id}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -351,12 +350,13 @@ export default function StudentDashboard() {
                       marginBottom: 2,
                     }}
                   >
-                    {m.title}
+                    {course.title}
                   </div>
                   <div
                     style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
                   >
-                    {m.topicsCount} topics · {m.completedTopics} completed
+                    {course.modules?.length || 0} topics ·{" "}
+                    {course.completedModules?.length || 0} completed
                   </div>
                   <div
                     style={{
@@ -370,7 +370,7 @@ export default function StudentDashboard() {
                     <div
                       style={{
                         height: "100%",
-                        width: `${Math.round((m.completedTopics / m.topicsCount) * 100)}%`,
+                        width: `${course.progress || 0}%`,
                         background: "#2563eb",
                         borderRadius: 99,
                       }}
@@ -380,12 +380,24 @@ export default function StudentDashboard() {
                 <button
                   className="btn btn-primary btn-sm"
                   style={{ marginLeft: 12, flexShrink: 0 }}
-                  onClick={() => navigate(`/student/courses/${m.id}`)}
+                  onClick={() => navigate(`/student/courses/${course._id}`)}
                 >
                   Continue
                 </button>
               </div>
             ))}
+            {enrolledCourses.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "20px",
+                  color: "var(--text-muted)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                Enroll in courses to see progress here
+              </div>
+            )}
           </div>
         </div>
 
