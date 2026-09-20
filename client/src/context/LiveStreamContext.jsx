@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "../services/api";
+import { useAuth } from './AuthContext';
 
 const LiveStreamContext = createContext(null);
 
@@ -46,22 +47,24 @@ export const LiveStreamProvider = ({ children }) => {
   });
 
   // Initial uploaded lectures library
+  const { user } = useAuth();
   const [lectures, setLectures] = useState([]);
   const [lecturesLoading, setLecturesLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) return;  // ← user ready hone ka wait karo
     const fetchLectures = async () => {
       try {
-        const res = await API.get("/lectures");
+        const res = await API.get('/lectures');
         setLectures(res.data.lectures || []);
       } catch (err) {
-        console.warn("Lectures fetch failed:", err?.message);
+        console.warn('Lectures fetch failed:', err?.message);
       } finally {
         setLecturesLoading(false);
       }
     };
     fetchLectures();
-  }, []);
+  }, [user]);  // ← user change hone pe fetch karo
 
   // Start a new live stream
   const startLiveStream = (streamDetails) => {
