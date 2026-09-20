@@ -33,6 +33,12 @@ export const authAPI = {
   getMe: () => API.get('/auth/me'),
 };
 
+export const userAPI = {
+  getAll: () => API.get('/auth/users'),
+  updateStatus: (id, status) => API.patch(`/auth/users/${id}/status`, { status }),
+  delete: (id) => API.delete(`/auth/users/${id}`),
+};
+
 export const courseAPI = {
   getAll: (params) => API.get("/courses", { params }),
   getById: (id) => API.get(`/courses/${id}`),

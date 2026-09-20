@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
-import { Users, UserCheck, CheckCircle2, AlertTriangle, TrendingUp, Activity, Shield, Zap } from 'lucide-react';
+import { Users, GraduationCap, School, CheckCircle2, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
+import { userAPI } from '../../services/api';
 
 const RECENT_SIGNUPS = [
   { email: 'john.doe@demo.com',          role: 'Candidate', when: '2 mins ago',  status: 'active' },
@@ -22,13 +24,6 @@ const exportCSV = (rows) => {
   URL.revokeObjectURL(url);
 };
 
-const stats = [
-  { icon: Users,      value: '3,492', label: 'Total Users',        change: '+245 this month', color: '#2563eb', bg: 'rgba(37,99,235,0.08)' },
-  { icon: UserCheck,  value: '42',    label: 'Recruiters',         change: 'Stable',          color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', neutral: true },
-  { icon: Shield,     value: '99.9%', label: 'System Uptime',      change: 'All systems OK',  color: '#16a34a', bg: 'rgba(22,163,74,0.08)' },
-  { icon: Zap,        value: '12',    label: 'Active Assessments', change: '+2 new today',    color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
-];
-
 const recentAssessments = [
   { name: 'Frontend Developer',  candidates: 124, completed: 98,  status: 'active' },
   { name: 'Backend Developer',   candidates: 86,  completed: 74,  status: 'active' },
@@ -38,6 +33,34 @@ const recentAssessments = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [userCounts, setUserCounts] = useState({ total: 0, students: 0, faculty: 0 });
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await userAPI.getAll();
+        const users = res.data.users || [];
+        setUserCounts({
+          total: users.length,
+          students: users.filter(u => u.role === 'student').length,
+          faculty: users.filter(u => u.role === 'faculty').length,
+        });
+      } catch (err) {
+        // keep counts at 0 on failure, dashboard still renders
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchCounts();
+  }, []);
+
+  const stats = [
+    { icon: Users,        value: loadingUsers ? '...' : userCounts.total.toLocaleString(),    label: 'Total Users', change: 'Live from database', color: '#2563eb', bg: 'rgba(37,99,235,0.08)' },
+    { icon: GraduationCap, value: loadingUsers ? '...' : userCounts.students.toLocaleString(), label: 'Students',    change: 'Live from database', color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', neutral: true },
+    { icon: School,       value: loadingUsers ? '...' : userCounts.faculty.toLocaleString(),   label: 'Faculty',     change: 'Live from database', color: '#16a34a', bg: 'rgba(22,163,74,0.08)', neutral: true },
+    { icon: Zap,          value: '12',                                                          label: 'Active Assessments', change: '+2 new today',   color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+  ];
 
   return (
     <ProtectedLayout title="Admin Dashboard" allowedRoles={['admin']}>

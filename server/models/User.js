@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema(
     streak: { type: Number, default: 0 },
     skillPoints: { type: Number, default: 0 },
     lastActive: { type: String, default: null },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
   },
   { timestamps: true },
 );
