@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async ({ email, password }) => {
-    const res = await authAPI.login({ email, password });
+    const res = await authAPI.login({ email, password, role });
     const { token, user: userData } = res.data;
     localStorage.setItem("pp_token", token);
     localStorage.setItem("pp_user", JSON.stringify(userData));

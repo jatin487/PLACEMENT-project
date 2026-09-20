@@ -1,12 +1,12 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role, email: user.email },
     process.env.JWT_SECRET,
-    { expiresIn: '1d' }
+    { expiresIn: "1d" },
   );
 };
 
@@ -16,7 +16,9 @@ exports.register = async (req, res) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -24,11 +26,11 @@ exports.register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: role || 'student',
+      role: role || "student",
       department: department || null,
       batch: batch || null,
       streak: 1,
-      lastActive: new Date().toISOString().split('T')[0]
+      lastActive: new Date().toISOString().split("T")[0],
     });
     await user.save();
 
@@ -36,7 +38,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: "User created successfully",
       token,
       user: {
         id: user._id,
@@ -47,8 +49,8 @@ exports.register = async (req, res) => {
         batch: user.batch,
         streak: user.streak,
         skillPoints: user.skillPoints,
-        lastActive: user.lastActive
-      }
+        lastActive: user.lastActive,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -57,20 +59,35 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     const user = await User.findOne({ email });
 
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
+    // Role check karo
+    if (role && user.role !== role) {
+      return res.status(403).json({
+        success: false,
+        message: `This account is not registered as ${role}`,
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials' });
+    if (!isMatch)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const lastActive = user.lastActive;
     let newStreak = user.streak || 0;
 
     if (lastActive) {
-      const diff = (new Date(today) - new Date(lastActive)) / (1000 * 60 * 60 * 24);
+      const diff =
+        (new Date(today) - new Date(lastActive)) / (1000 * 60 * 60 * 24);
       if (diff === 1) newStreak += 1;
       else if (diff > 1) newStreak = 1;
     } else {
@@ -85,7 +102,7 @@ exports.login = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Login successful!',
+      message: "Login successful!",
       token,
       user: {
         id: user._id,
@@ -96,8 +113,8 @@ exports.login = async (req, res) => {
         batch: user.batch,
         streak: user.streak,
         skillPoints: user.skillPoints,
-        lastActive: user.lastActive
-      }
+        lastActive: user.lastActive,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -107,7 +124,10 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     res.json({
       success: true,
@@ -120,8 +140,8 @@ exports.getMe = async (req, res) => {
         batch: user.batch,
         streak: user.streak,
         skillPoints: user.skillPoints,
-        lastActive: user.lastActive
-      }
+        lastActive: user.lastActive,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -130,7 +150,7 @@ exports.getMe = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}, '-password');
+    const users = await User.find({}, "-password");
     res.json({ success: true, count: users.length, users });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
