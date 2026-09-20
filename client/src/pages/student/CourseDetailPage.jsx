@@ -576,7 +576,7 @@ const FALLBACK = {
 export default function CourseDetailPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const course = COURSE_CONTENT[courseId] || FALLBACK;
+  const course = COURSE_CONTENT[courseId] || COURSE_CONTENT['dsa'] || FALLBACK;
 
   const [activeTab, setActiveTab] = useState('content');
   const [openSection, setOpenSection] = useState(0);
@@ -631,7 +631,7 @@ export default function CourseDetailPage() {
       )}
 
       {/* Back button */}
-      <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={() => navigate('/student/courses')}>
+      <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={() => navigate(`/student/courses/${course._id}`)}>
         ← Back to Courses
       </button>
 
