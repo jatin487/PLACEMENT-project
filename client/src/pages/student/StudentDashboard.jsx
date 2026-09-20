@@ -27,6 +27,7 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { analyticsAPI } from "../../services/api";
+import API from '../../services/api';
 
 const radarData = [
   { subject: "DSA", A: 72 },
