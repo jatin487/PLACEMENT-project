@@ -1,25 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProtectedLayout from '../../components/layout/ProtectedLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useLiveStream } from '../../context/LiveStreamContext';
 import { useNavigate } from 'react-router-dom';
 import UploadLectureModal from '../../components/faculty/UploadLectureModal';
 import GoLiveModal from '../../components/faculty/GoLiveModal';
-import { Users, BookOpen, FileText, Radio, Plus, Upload, TrendingUp, Clock } from 'lucide-react';
-
-const assessments = [
-  { title: 'NPTEL DAA Assignment 1',       submissions: '112/124', avg: '84%', status: 'active' },
-  { title: 'Data Structures Midterm',      submissions: '98/124',  avg: '76%', status: 'draft' },
-  { title: 'SQL & Relational Algebra',     submissions: '124/124', avg: '92%', status: 'completed' },
-  { title: 'Operating Systems MCQ',        submissions: '67/124',  avg: '71%', status: 'active' },
-];
-
-const topStudents = [
-  { name: 'Alice Smith',    score: '98%', rank: 1, dept: 'CSE' },
-  { name: 'Bob Johnson',    score: '95%', rank: 2, dept: 'IT' },
-  { name: 'Charlie Brown',  score: '94%', rank: 3, dept: 'CSE' },
-  { name: 'Diana Prince',   score: '91%', rank: 4, dept: 'ECE' },
-];
+import { Users, BookOpen, FileText, Radio, Plus, Upload, Loader2 } from 'lucide-react';
+import API from '../../services/api';
 
 export default function FacultyDashboard() {
   const { user } = useAuth();
@@ -28,7 +15,87 @@ export default function FacultyDashboard() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isGoLiveOpen, setIsGoLiveOpen] = useState(false);
 
+  // States for backend data
+  const [coursesCount, setCoursesCount] = useState(0);
+  const [assessmentsCount, setAssessmentsCount] = useState(0);
+  const [studentsCount, setStudentsCount] = useState(0);
+  const [recentAssessments, setRecentAssessments] = useState([]);
+  const [topStudents, setTopStudents] = useState([]);
+
+  // Loading states
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingAssessments, setLoadingAssessments] = useState(true);
+  const [loadingTopStudents, setLoadingTopStudents] = useState(true);
+
   const statusBadge = { active: 'badge-success', draft: 'badge-warning', completed: 'badge-muted' };
+
+  useEffect(() => {
+    fetchStats();
+    fetchAssessments();
+    fetchTopPerformers();
+  }, []);
+
+  const fetchStats = async () => {
+    setLoadingStats(true);
+    try {
+      const [coursesRes, assessmentsRes, studentsRes] = await Promise.allSettled([
+        API.get('/courses'),
+        API.get('/assessments'),
+        API.get('/auth/users?role=student')
+      ]);
+
+      if (coursesRes.status === 'fulfilled') {
+        const cData = coursesRes.value.data;
+        const list = Array.isArray(cData) ? cData : (cData.courses || []);
+        setCoursesCount(list.length);
+      }
+
+      if (assessmentsRes.status === 'fulfilled') {
+        const aData = assessmentsRes.value.data;
+        const list = Array.isArray(aData) ? aData : (aData.assessments || []);
+        setAssessmentsCount(aData.count ?? list.length);
+      }
+
+      if (studentsRes.status === 'fulfilled') {
+        const sData = studentsRes.value.data;
+        const usersList = Array.isArray(sData) ? sData : (sData.users || []);
+        const filtered = usersList.filter(u => u.role === 'student');
+        setStudentsCount(filtered.length);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const fetchAssessments = async () => {
+    setLoadingAssessments(true);
+    try {
+      const res = await API.get('/assessments');
+      const data = res.data;
+      const list = Array.isArray(data) ? data : (data.assessments || []);
+      setRecentAssessments(list);
+    } catch (err) {
+      console.error('Failed to fetch recent assessments:', err);
+    } finally {
+      setLoadingAssessments(false);
+    }
+  };
+
+  const fetchTopPerformers = async () => {
+    setLoadingTopStudents(true);
+    try {
+      const res = await API.get('/leaderboard?limit=5');
+      const data = res.data;
+      const list = Array.isArray(data) ? data : (data.leaderboard || []);
+      setTopStudents(list);
+    } catch (err) {
+      console.error('Failed to fetch top performers:', err);
+    } finally {
+      setLoadingTopStudents(false);
+    }
+  };
 
   return (
     <ProtectedLayout title="Faculty Dashboard" allowedRoles={['faculty', 'admin']}>
@@ -69,7 +136,7 @@ export default function FacultyDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>
-              Welcome back, {user?.name?.split(' ')[0] || 'Professor'}
+              Welcome back, {user?.name || 'Professor'}
             </h2>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
               Manage your assessments, upload lectures, and engage with students.
@@ -106,9 +173,9 @@ export default function FacultyDashboard() {
       {/* Stats */}
       <div className="grid grid-3" style={{ marginBottom: 24 }}>
         {[
-          { icon: Users,    value: '124', label: 'Active Students',   change: '↑ 12% this month', color: '#2563eb', bg: 'rgba(37,99,235,0.08)' },
-          { icon: BookOpen, value: '8',   label: 'Courses Managed',   change: 'All active',        color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', neutral: true },
-          { icon: FileText, value: '45',  label: 'Assessments Created', change: '↑ 3 this week',  color: '#16a34a', bg: 'rgba(22,163,74,0.08)' },
+          { icon: Users,    value: loadingStats ? '...' : studentsCount, label: 'Active Students', color: '#2563eb', bg: 'rgba(37,99,235,0.08)' },
+          { icon: BookOpen, value: loadingStats ? '...' : coursesCount,  label: 'Courses Managed', color: '#0ea5e9', bg: 'rgba(14,165,233,0.08)' },
+          { icon: FileText, value: loadingStats ? '...' : assessmentsCount, label: 'Assessments Created', color: '#16a34a', bg: 'rgba(22,163,74,0.08)' },
         ].map((s, i) => {
           const Icon = s.icon;
           return (
@@ -118,7 +185,6 @@ export default function FacultyDashboard() {
               </div>
               <div className="stat-value">{s.value}</div>
               <div className="stat-label">{s.label}</div>
-              <div className="stat-change" style={s.neutral ? { color: 'var(--text-muted)' } : {}}>{s.change}</div>
             </div>
           );
         })}
@@ -137,30 +203,53 @@ export default function FacultyDashboard() {
               <Plus size={13} /> New
             </button>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Submissions</th>
-                <th>Avg.</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessments.map((a, i) => (
-                <tr key={i}>
-                  <td style={{ fontWeight: 600, maxWidth: 160 }}>
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.title}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{a.submissions}</td>
-                  <td style={{ fontWeight: 700 }}>{a.avg}</td>
-                  <td><span className={`badge ${statusBadge[a.status]}`}>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span></td>
+          
+          {loadingAssessments ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 8, color: 'var(--text-secondary)' }}>
+              <Loader2 size={20} className="animate-spin" /> Loading assessments...
+            </div>
+          ) : recentAssessments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-secondary)' }}>
+              No assessments found.
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Questions</th>
+                  <th>Total Score</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentAssessments.map((a, i) => {
+                  const status = a.status || 'active';
+                  const badgeClass = statusBadge[status] || 'badge-success';
+                  return (
+                    <tr key={a._id || i}>
+                      <td style={{ fontWeight: 600, maxWidth: 160 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.title}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {a.questions ? `${a.questions.length} Qs` : (a.submissions || '-')}
+                      </td>
+                      <td style={{ fontWeight: 700 }}>
+                        {a.totalScore !== undefined ? `${a.totalScore} pts` : (a.avg || '-')}
+                      </td>
+                      <td>
+                        <span className={`badge ${badgeClass}`}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Top Students */}
@@ -168,34 +257,49 @@ export default function FacultyDashboard() {
           <div className="card-header">
             <div>
               <h2 className="card-title">Top Performers</h2>
-              <p className="card-subtitle">Highest scoring students this month</p>
+              <p className="card-subtitle">Highest scoring students</p>
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => navigate('/faculty/students')}>All Students</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {topStudents.map(student => (
-              <div key={student.rank} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                transition: 'background 0.15s',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <div className={`leaderboard-rank rank-${student.rank}`}>{student.rank}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{student.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{student.dept}</div>
-                </div>
-                <span style={{
-                  fontWeight: 800, fontSize: '0.9rem',
-                  color: parseInt(student.score) >= 95 ? 'var(--color-success)' : parseInt(student.score) >= 90 ? 'var(--color-warning)' : 'var(--text-primary)',
-                }}>
-                  {student.score}
-                </span>
-              </div>
-            ))}
-          </div>
+
+          {loadingTopStudents ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: 8, color: 'var(--text-secondary)' }}>
+              <Loader2 size={20} className="animate-spin" /> Loading leaderboard...
+            </div>
+          ) : topStudents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-secondary)' }}>
+              No top performers found.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {topStudents.map((student, idx) => {
+                const rank = student.rank || (idx + 1);
+                const points = student.skillPoints ?? student.score ?? 0;
+                return (
+                  <div key={student.id || student._id || idx} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                    transition: 'background 0.15s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div className={`leaderboard-rank rank-${rank}`}>{rank}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{student.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{student.department || student.dept || 'N/A'}</div>
+                    </div>
+                    <span style={{
+                      fontWeight: 800, fontSize: '0.9rem',
+                      color: points >= 100 ? 'var(--color-success)' : points >= 50 ? 'var(--color-warning)' : 'var(--text-primary)',
+                    }}>
+                      {typeof points === 'number' ? `${points} pts` : points}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -206,3 +310,4 @@ export default function FacultyDashboard() {
     </ProtectedLayout>
   );
 }
+
